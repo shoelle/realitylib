@@ -1,5 +1,5 @@
 # realitylib
-
+![Gradle Build](https://github.com/shoelle/realitylib/actions/workflows/main.yml/badge.svg)
 Contributors: V Brunkow, Tony Martin, Matt McClenehan, Joshua Lowe, Steve Hoelle
 
 Starting with [raylib](https://github.com/raysan5/raylib) and [raymob](https://github.com/Bigfoot71/raymob), we aim to build a framework for simple and enjoyable native XR programming. OpenXR / Quest support is currently in the works!
