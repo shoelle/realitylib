@@ -1,6 +1,3 @@
-# For more information about using CMake with Android Studio, read the
-# documentation: https://d.android.com/studio/projects/add-native-code.html
-
 # Set the minimum required version of CMake
 cmake_minimum_required(VERSION 3.22.1)
 
@@ -8,30 +5,30 @@ cmake_minimum_required(VERSION 3.22.1)
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 11)
 
-# Set the project name based on the name given on the gradle.properties
+# Set the project name
 project("${APP_LIB_NAME}")
 
-# Include raylib and raymob as a subdirectories
+# Add subdirectories for dependencies
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raylib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raymob)
 
-# Fetch all source files for your project (recursively), excluding 'deps' source files
+# Fetch all source files recursively, excluding 'deps' source files
 file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/*.c" "${CMAKE_SOURCE_DIR}/*.cpp")
 list(FILTER SOURCES EXCLUDE REGEX "${CMAKE_SOURCE_DIR}/deps/.*")
 
-# Add headers directory for android_native_app_glue.c
+# Include headers for android_native_app_glue.c
 include_directories(${ANDROID_NDK}/sources/android/native_app_glue/)
 
-# Add android_native_app_glue.c to the source files
+# Add android_native_app_glue.c to source files
 list(APPEND SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
-# Create a shared library with game source files
+# Create a shared library
 add_library(${APP_LIB_NAME} SHARED ${SOURCES})
 
-# Define compiler macros for the library
+# Define compiler macros
 target_compile_definitions(${APP_LIB_NAME} PRIVATE PLATFORM_ANDROID)
 
-# Apply flags depending on the build type
+# Set compile flags based on build type
 if(CMAKE_BUILD_TYPE MATCHES "Debug")
     target_compile_definitions(${APP_LIB_NAME} PRIVATE _DEBUG DEBUG)
     set(CMAKE_CXX_FLAGS_DEBUG "-g -fno-limit-debug-info")
@@ -41,9 +38,21 @@ elseif(CMAKE_BUILD_TYPE MATCHES "Release")
     set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 endif()
 
-# Include raylib and raymob header files
+# Include dependency headers
 target_include_directories(${APP_LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raylib")
 target_include_directories(${APP_LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raymob")
 
-# Link required libraries to the native application
+# Link libraries
 target_link_libraries(${APP_LIB_NAME} raylib raymoblib)
+# Add Clang-Tidy linter
+set(CLANG_TIDY_EXE "C:/Program Files/LLVM/bin/clang-tidy.exe") # Update the path to clang-tidy
+set(CLANG_TIDY_OPTIONS
+        "-checks=*,-clang-analyzer-alpha*"  # Enable all checks except alpha ones
+        "-header-filter=.*"                 # Include headers in the checks
+        "-format-style=file"                # Use project .clang-format if available
+        "-quiet"                            # Always produce output, even if no issues
+)
+
+set_target_properties(${APP_LIB_NAME} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
+
+message(STATUS "Clang-Tidy linting enabled.")

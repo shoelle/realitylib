@@ -1,6 +1,7 @@
 # realitylib
 Starting with [raylib](https://github.com/raysan5/raylib) and [raymob](https://github.com/Bigfoot71/raymob), we aim to build a framework for simple and enjoyable native XR programming. OpenXR / Quest support is currently in the works!
 
+Please install LLVM here before running and make sure you select add to path: https://github.com/llvm/llvm-project/releases/download/llvmorg-18.1.8/LLVM-18.1.8-win64.exe
 
 <img src="app/src/main/ic_launcher-playstore.png" alt="raymob icon" width="256" height="256">
 
