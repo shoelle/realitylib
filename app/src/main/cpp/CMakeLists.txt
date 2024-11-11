@@ -44,6 +44,7 @@ target_include_directories(${APP_LIB_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/ray
 
 # Link libraries
 target_link_libraries(${APP_LIB_NAME} raylib raymoblib)
+
 # Add Clang-Tidy linter
 set(CLANG_TIDY_EXE "C:/Program Files/LLVM/bin/clang-tidy.exe") # Update the path to clang-tidy
 set(CLANG_TIDY_OPTIONS
@@ -56,3 +57,64 @@ set(CLANG_TIDY_OPTIONS
 set_target_properties(${APP_LIB_NAME} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_EXE}")
 
 message(STATUS "Clang-Tidy linting enabled.")
+
+# For FetchContent_Declare() and FetchContent_MakeAvailable()
+include(FetchContent)
+
+# openxr_loader - From github.com/KhronosGroup
+set(BUILD_TESTS
+        OFF
+        CACHE INTERNAL "Build tests"
+)
+set(BUILD_API_LAYERS
+        ON
+        CACHE INTERNAL "Use OpenXR layers"
+)
+FetchContent_Declare(
+        OpenXR
+        URL_HASH MD5=924a94a2da0b5ef8e82154c623d88644
+        URL https://github.com/KhronosGroup/OpenXR-SDK-Source/archive/refs/tags/release-1.0.34.zip
+        SOURCE_DIR
+        openxr
+)
+FetchContent_MakeAvailable(OpenXR)
+
+if(ANDROID) # Android
+    target_include_directories(
+            ${PROJECT_NAME}
+            PRIVATE
+            # In this repo
+            ../Common/
+            # From OpenXR repo
+            "${openxr_SOURCE_DIR}/src/common"
+            "${openxr_SOURCE_DIR}/external/include"
+    )
+
+    # export ANativeActivity_onCreate for java to call.
+    set_property(
+            TARGET ${PROJECT_NAME}
+            APPEND_STRING
+            PROPERTY LINK_FLAGS " -u ANativeActivity_onCreate"
+    )
+
+    # native_app_glue
+    include(AndroidNdkModules)
+    android_ndk_import_module_native_app_glue()
+
+    target_link_libraries(${PROJECT_NAME} android native_app_glue openxr_loader)
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wno-cast-calling-convention)
+    #addgraphicsapidefine(${PROJECT_NAME})
+
+    # VulkanNDK
+    find_library(vulkan-lib vulkan)
+    if(vulkan-lib)
+        target_include_directories(
+                ${PROJECT_NAME}
+                PUBLIC ${ANDROID_NDK}/sources/third_party/vulkan/src/include
+        )
+        target_link_libraries(${PROJECT_NAME} ${vulkan-lib})
+        target_compile_definitions(
+                ${PROJECT_NAME} PUBLIC XR_TUTORIAL_USE_VULKAN
+        )
+    endif()
+endif()

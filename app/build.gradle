@@ -60,6 +60,7 @@ android {
         externalNativeBuild {
             cmake {
                 arguments "-DAPP_LIB_NAME=${project.properties['app.native_library_name']}"
+                targets "openxr_loader"
             }
         }
 
