@@ -11,7 +11,7 @@
     <!--  There is no Java or Kotlin code in the application.  -->
     <activity android:name="android.app.NativeActivity" android:configChanges="screenSize|screenLayout|orientation|keyboardHidden|keyboard|navigation|uiMode" android:excludeFromRecents="false" android:exported="true" android:launchMode="singleTask" android:screenOrientation="landscape" android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen">
         <!--  Tell NativeActivity the name of our .so.  -->
-        <meta-data android:name="android.app.lib_name" android:value="main"/>
+        <meta-data android:name="android.app.lib_name" android:value="raymob"/>
         <!--  Standard Khronos OpenXR launcher intent filter.  -->
         <intent-filter>
             <action android:name="android.intent.action.MAIN"/>
