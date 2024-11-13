@@ -91,6 +91,45 @@
 #include <xr_linear.h>
 #include <raymob.h>
 
+//------------------------------------------------------------------------------------
+// Program main entry point
+//------------------------------------------------------------------------------------
+int main(void)
+{
+    // Initialization
+    //--------------------------------------------------------------------------------------
+    InitWindow(0, 0, "raylib [core] example - basic window");
+    SetTargetFPS(60);               // Set our game to run at 60 frames-per-second
+    //--------------------------------------------------------------------------------------
+
+    // Main game loop
+    while (!WindowShouldClose())    // Detect window close button or ESC key
+    {
+        // Update
+        //----------------------------------------------------------------------------------
+        // TODO: Update your variables here
+        //----------------------------------------------------------------------------------
+
+        // Draw
+        //----------------------------------------------------------------------------------
+        BeginDrawing();
+
+        ClearBackground(RAYWHITE);
+
+        DrawText("Congrats! You created your first window!", 190, 200, 20, LIGHTGRAY);
+
+        EndDrawing();
+        //----------------------------------------------------------------------------------
+    }
+
+    // De-Initialization
+    //--------------------------------------------------------------------------------------
+    CloseWindow();        // Close window and OpenGL context
+    //--------------------------------------------------------------------------------------
+
+    return 0;
+}
+
 #if !defined(ANDROID)
 // this is just a test that our SDK headers compile with the C compiler
 int main(int argc, const char** argv) {
@@ -105,19 +144,4 @@ static void app_handle_cmd(struct android_app* app, int32_t cmd) {
     (void)cmd;
 }
 
-void android_main(struct android_app* app) {
-    JNIEnv* Env;
-
-    JavaVM* java_vm = app->activity->vm;
-
-    (*java_vm)->AttachCurrentThread(java_vm, &Env, NULL);
-
-    app->userData = NULL;
-    app->onAppCmd = app_handle_cmd;
-
-    // empty implementation
-
-    ANativeActivity_finish(app->activity);
-    (*java_vm)->DetachCurrentThread(java_vm);
-}
 #endif  // !defined(ANDROID)
