@@ -25,4 +25,3 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_subdirectory(3rdParty)
 add_subdirectory(SampleXrFramework)
-add_subdirectory(XrSamples)
