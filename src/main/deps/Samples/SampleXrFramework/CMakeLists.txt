@@ -30,7 +30,6 @@ set(3RDPARTY_PATH ../3rdParty)
 file(GLOB_RECURSE C_SOURCES "Src/Misc/Log.c")
 add_library(samplexrframework STATIC ${C_SOURCES})
 
-
 # Add include directories
 target_include_directories(
     samplexrframework
