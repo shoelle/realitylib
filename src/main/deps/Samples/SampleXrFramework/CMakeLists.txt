@@ -27,9 +27,8 @@ set(OPENXR_PREVIEW_HEADER ../../OpenXR)
 set(1STPARTY_PATH ../1stParty)
 set(3RDPARTY_PATH ../3rdParty)
 
-file(GLOB_RECURSE CPP_SOURCES "Src/*.cpp")
-file(GLOB_RECURSE C_SOURCES "Src/*.c")
-add_library(samplexrframework STATIC ${CPP_SOURCES} ${C_SOURCES})
+file(GLOB_RECURSE C_SOURCES "Src/Misc/Log.c")
+add_library(samplexrframework STATIC ${C_SOURCES})
 
 
 # Add include directories
