@@ -664,6 +664,10 @@ void InitWindow(int width, int height, const char *title)
     SetRandomSeed((unsigned int)time(NULL));
 }
 
+void InitVR(void) {
+    __android_log_print(ANDROID_LOG_ERROR, "TRACKERS", "%s", "testing init logging capabilities"); // this will log to logcat instead of normal out console, slightly more useful, but still, good luck finding where its logging.
+}
+
 // Close window and unload OpenGL context
 void CloseWindow(void)
 {

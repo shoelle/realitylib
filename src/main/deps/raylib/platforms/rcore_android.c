@@ -52,6 +52,7 @@
 #include <jni.h>                        // Required for: JNIEnv and JavaVM [Used in OpenURL()]
 
 #include <EGL/egl.h>                    // Native platform windowing system interface
+#include <android/log.h>
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -100,31 +101,31 @@ static GamepadButton AndroidTranslateGamepadButton(int button);                 
 // main function which we call from android_main, defined by ourselves
 extern int main(int argc, char *argv[]);
 
-// Android main function
-void android_main(struct android_app *app)
-{
-    char arg0[] = "raylib";     // NOTE: argv[] are mutable
-    platform.app = app;
-
-    // NOTE: Return from main is ignored
-    (void)main(1, (char *[]) { arg0, NULL });
-
-    // Request to end the native activity
-    ANativeActivity_finish(app->activity);
-
-    // Android ALooper_pollAll() variables
-    int pollResult = 0;
-    int pollEvents = 0;
-
-    // Waiting for application events before complete finishing
-    while (!app->destroyRequested)
-    {
-        while ((pollResult = ALooper_pollAll(0, NULL, &pollEvents, (void **)&platform.source)) >= 0)
-        {
-            if (platform.source != NULL) platform.source->process(app, platform.source);
-        }
-    }
-}
+//// Android main function
+//void android_main(struct android_app *app)
+//{
+//    char arg0[] = "raylib";     // NOTE: argv[] are mutable
+//    platform.app = app;
+//
+//    // NOTE: Return from main is ignored
+//    (void)main(1, (char *[]) { arg0, NULL });
+//
+//    // Request to end the native activity
+//    ANativeActivity_finish(app->activity);
+//
+//    // Android ALooper_pollAll() variables
+//    int pollResult = 0;
+//    int pollEvents = 0;
+//
+//    // Waiting for application events before complete finishing
+//    while (!app->destroyRequested)
+//    {
+//        while ((pollResult = ALooper_pollAll(0, NULL, &pollEvents, (void **)&platform.source)) >= 0)
+//        {
+//            if (platform.source != NULL) platform.source->process(app, platform.source);
+//        }
+//    }
+//}
 
 // NOTE: Add this to header (if apps really need it)
 struct android_app *GetAndroidApp(void)
