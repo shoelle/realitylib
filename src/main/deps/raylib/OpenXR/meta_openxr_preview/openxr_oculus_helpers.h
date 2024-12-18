@@ -27,7 +27,7 @@ Language    :   C99
 #ifndef OPENXR_OCULUS_HELPERS_H
 #define OPENXR_OCULUS_HELPERS_H 1
 
-#include <openxr/openxr.h>
+#include "openxr/openxr.h"
 #include <xr_linear.h>
 
 #include "math.h" // for cosf(), sinf(), tanf()

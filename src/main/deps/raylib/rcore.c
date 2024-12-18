@@ -84,6 +84,12 @@
 
 #include "raylib.h"                 // Declares module functions
 
+
+#include <openxr/openxr.h>
+#include <openxr/openxr_platform.h>
+#include "OpenXR/meta_openxr_preview/openxr_oculus_helpers.h"
+
+
 // Check if config flags have been externally provided on compilation line
 #if !defined(EXTERNAL_CONFIG_FLAGS)
     #include "config.h"             // Defines module configuration flags

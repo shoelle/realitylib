@@ -99,11 +99,11 @@ typedef void(GL_APIENTRY* PFNGLFRAMEBUFFERTEXTURE2DMULTISAMPLEEXTPROC)(
 
 #define XR_USE_GRAPHICS_API_OPENGL_ES 1
 #define XR_USE_PLATFORM_ANDROID 1
-#include <openxr/openxr.h>
-#include <openxr/openxr_platform.h>
+#include "openxr/openxr.h"
+#include "openxr/openxr_platform.h"
 #include <raymob.h>
 
-#include <meta_openxr_preview/openxr_oculus_helpers.h>
+#include "OpenXR/meta_openxr_preview/openxr_oculus_helpers.h"
 
 #define MATH_PI 3.14159265358979323846f
 

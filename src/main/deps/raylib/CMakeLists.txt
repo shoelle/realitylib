@@ -12,6 +12,25 @@ add_library(raylib STATIC
 # Include headers directory for android_native_app_glue.c
 include_directories(${ANDROID_NDK}/sources/android/native_app_glue/)
 
+# Add OpenXR include paths
+target_include_directories(raylib PRIVATE
+        ${CMAKE_SOURCE_DIR}/xr
+        ${CMAKE_SOURCE_DIR}/../xr  # May need this depending on relative path
+)
+
+target_include_directories(raylib PRIVATE
+        ${CMAKE_SOURCE_DIR}/deps/OpenXR/meta_openxr_preview
+        ${CMAKE_SOURCE_DIR}/deps/OpenXR/meta_openxr_preview/include
+)
+
+message(STATUS "CMAKE_SOURCE_DIR is: ${CMAKE_SOURCE_DIR}")
+
+if(NOT TARGET OpenXR::openxr_loader)
+    find_package(OpenXR REQUIRED)
+endif()
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raylib/Samples)
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raylib/Samples")
+
 # Add android_native_app_glue.c to the source files
 list(APPEND SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 

@@ -21,7 +21,7 @@
 #ifndef XR_LINEAR_H_
 #define XR_LINEAR_H_
 
-#include <openxr/openxr.h>
+#include "openxr/openxr.h"
 
 /* REUSE-IgnoreStart */
 /* The following has copyright notices that duplicate the header above */

@@ -22,7 +22,7 @@ if(ANDROID)
     add_library(app_glue STATIC ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 endif()
 
-set(OPENXR_PREVIEW_HEADER ../../OpenXR)
+set(OPENXR_PREVIEW_HEADER ../../raylib/OpenXR)
 
 set(1STPARTY_PATH ../1stParty)
 set(3RDPARTY_PATH ../3rdParty)

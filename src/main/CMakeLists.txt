@@ -8,14 +8,10 @@ set(CMAKE_CXX_STANDARD 11)
 # Set the project name
 project(raymob)
 
-if(NOT TARGET OpenXR::openxr_loader)
-    find_package(OpenXR REQUIRED)
-endif()
-
 # Add subdirectories for dependencies
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raylib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raymob)
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/Samples)
+
 
 # Fetch all source files recursively, excluding 'deps' source files
 file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/*.c" "${CMAKE_SOURCE_DIR}/*.cpp")
@@ -46,7 +42,7 @@ endif()
 # Include dependency headers
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raylib")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raymob")
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/Samples")
+
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE
