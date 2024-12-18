@@ -40,6 +40,7 @@ Authors   :
 #include <android/native_window_jni.h>
 #include <android_native_app_glue.h>
 #include <assert.h>
+#include "raylib.h"
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -2718,6 +2719,7 @@ static LocVel GetSpaceLocVel(XrSpace space, XrTime time) {
 void android_main(struct android_app* app) {
     ALOGV("----------------------------------------------------------------");
     ALOGV("android_app_entry()");
+    InitVR();
     ALOGV("    android_main()");
 
     JNIEnv* Env;

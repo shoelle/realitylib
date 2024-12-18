@@ -49,7 +49,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/ray
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/Samples")
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE native_activity_framework)
+target_link_libraries(${PROJECT_NAME} PRIVATE raylib native_activity_framework)
 
 set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS "-u ANativeActivity_onCreate")
 

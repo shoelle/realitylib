@@ -52,6 +52,8 @@
 #include <jni.h>                        // Required for: JNIEnv and JavaVM [Used in OpenURL()]
 
 #include <EGL/egl.h>                    // Native platform windowing system interface
+#include <android/log.h>
+#include <openxr/openxr.h>
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -100,31 +102,31 @@ static GamepadButton AndroidTranslateGamepadButton(int button);                 
 // main function which we call from android_main, defined by ourselves
 extern int main(int argc, char *argv[]);
 
-// Android main function
-void android_main(struct android_app *app)
-{
-    char arg0[] = "raylib";     // NOTE: argv[] are mutable
-    platform.app = app;
-
-    // NOTE: Return from main is ignored
-    (void)main(1, (char *[]) { arg0, NULL });
-
-    // Request to end the native activity
-    ANativeActivity_finish(app->activity);
-
-    // Android ALooper_pollAll() variables
-    int pollResult = 0;
-    int pollEvents = 0;
-
-    // Waiting for application events before complete finishing
-    while (!app->destroyRequested)
-    {
-        while ((pollResult = ALooper_pollAll(0, NULL, &pollEvents, (void **)&platform.source)) >= 0)
-        {
-            if (platform.source != NULL) platform.source->process(app, platform.source);
-        }
-    }
-}
+//// Android main function
+//void android_main(struct android_app *app)
+//{
+//    char arg0[] = "raylib";     // NOTE: argv[] are mutable
+//    platform.app = app;
+//
+//    // NOTE: Return from main is ignored
+//    (void)main(1, (char *[]) { arg0, NULL });
+//
+//    // Request to end the native activity
+//    ANativeActivity_finish(app->activity);
+//
+//    // Android ALooper_pollAll() variables
+//    int pollResult = 0;
+//    int pollEvents = 0;
+//
+//    // Waiting for application events before complete finishing
+//    while (!app->destroyRequested)
+//    {
+//        while ((pollResult = ALooper_pollAll(0, NULL, &pollEvents, (void **)&platform.source)) >= 0)
+//        {
+//            if (platform.source != NULL) platform.source->process(app, platform.source);
+//        }
+//    }
+//}
 
 // NOTE: Add this to header (if apps really need it)
 struct android_app *GetAndroidApp(void)
@@ -514,6 +516,13 @@ void PollInputEvents(void)
 //----------------------------------------------------------------------------------
 // Module Internal Functions Definition
 //----------------------------------------------------------------------------------
+
+void InitVR(void) {
+    printf("testing InitVR logging capabilities"); //good luck finding where this is logging
+    __android_log_print(ANDROID_LOG_ERROR, "TRACKERS", "%s", "testing init logging capabilities"); // this will log to logcat instead of normal out console, slightly more useful, but still, good luck finding where its logging. You will need to import a library for this, do it.
+    __android_log_print(ANDROID_LOG_ERROR, "TRACKERS", "%lu", XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT);
+    // these 2 lines of code above are unrelated to the bug that you're about to encounter, you could delete them and it wouldn't matter
+}
 
 // Initialize platform: graphics, inputs and more
 int InitPlatform(void)

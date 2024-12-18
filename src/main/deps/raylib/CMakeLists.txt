@@ -1,3 +1,9 @@
+if(NOT TARGET OpenXR::openxr_loader)
+    find_package(OpenXR REQUIRED)
+endif()
+
+set(OPENXR_PREVIEW_HEADER ../OpenXR)
+
 # Define a library for raylib
 add_library(raylib STATIC
     rcore.c
@@ -30,7 +36,7 @@ elseif(CMAKE_ANDROID_ARCH_ABI STREQUAL "arm64-v8a")
 endif()
 
 # Link required libraries to raylib
-target_link_libraries(raylib log android EGL GLESv2 OpenSLES dl m c)
+target_link_libraries(raylib log android EGL GLESv2 OpenSLES dl m c OpenXR::openxr_loader)
 
 # Add library-specific binding option
 target_link_options(raylib PRIVATE "-u ANativeActivity_onCreate")
