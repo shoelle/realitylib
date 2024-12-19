@@ -16,7 +16,9 @@ add_library(raylib STATIC
     )
 
 # Include headers directory for android_native_app_glue.c
-include_directories(${ANDROID_NDK}/sources/android/native_app_glue/)
+include_directories(${ANDROID_NDK}/sources/android/native_app_glue/
+                    ${OPENXR_PREVIEW_HEADER}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/platforms)
 
 # Add android_native_app_glue.c to the source files
 list(APPEND SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
