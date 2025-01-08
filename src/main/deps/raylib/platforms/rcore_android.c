@@ -53,7 +53,6 @@
 
 #include <EGL/egl.h>                    // Native platform windowing system interface
 #include <android/log.h>
-#include <openxr/openxr.h>
 
 //----------------------------------------------------------------------------------
 // Types and Structures Definition
@@ -516,13 +515,6 @@ void PollInputEvents(void)
 //----------------------------------------------------------------------------------
 // Module Internal Functions Definition
 //----------------------------------------------------------------------------------
-
-void InitVR(void) {
-    printf("testing InitVR logging capabilities"); //good luck finding where this is logging
-    __android_log_print(ANDROID_LOG_ERROR, "TRACKERS", "%s", "testing init logging capabilities"); // this will log to logcat instead of normal out console, slightly more useful, but still, good luck finding where its logging. You will need to import a library for this, do it.
-    __android_log_print(ANDROID_LOG_ERROR, "TRACKERS", "%lu", XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT);
-    // these 2 lines of code above are unrelated to the bug that you're about to encounter, you could delete them and it wouldn't matter
-}
 
 // Initialize platform: graphics, inputs and more
 int InitPlatform(void)

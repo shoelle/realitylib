@@ -81,6 +81,7 @@
 
 #include <stdarg.h>     // Required for: va_list - Only used by TraceLogCallback
 #include <openxr/openxr.h>
+#include "android_native_app_glue.h"
 
 #define RAYLIB_VERSION_MAJOR 5
 #define RAYLIB_VERSION_MINOR 0
@@ -953,7 +954,7 @@ extern "C" {            // Prevents name mangling of functions
 
 // Window-related functions
 RLAPI void InitWindow(int width, int height, const char *title);  // Initialize window and OpenGL context
-RLAPI void InitVR(void); // Currently just prints to console, but will initialize OpenXR stuff down the road if we can fix this bug
+RLAPI void InitVR(struct android_app* app); // Currently just prints to console, but will initialize OpenXR stuff down the road if we can fix this bug
 RLAPI void CloseWindow(void);                                     // Close window and unload OpenGL context
 RLAPI bool WindowShouldClose(void);                               // Check if application should close (KEY_ESCAPE pressed or windows close icon clicked)
 RLAPI bool IsWindowReady(void);                                   // Check if window has been initialized successfully
