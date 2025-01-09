@@ -33,5 +33,5 @@ Authors   :
  * event loop for receiving input events and doing other things.
  */
 void android_main(struct android_app* app) {
-//    InitVR(app);
+    InitVR(app);
 }

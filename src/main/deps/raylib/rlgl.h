@@ -1767,7 +1767,7 @@ void rlActiveDrawBuffers(int count)
             };
 
 #if defined(GRAPHICS_API_OPENGL_ES3)
-            glDrawBuffersEXT(count, buffers);
+            glDrawBuffers(count, buffers);
 #else
             glDrawBuffers(count, buffers);
 #endif
