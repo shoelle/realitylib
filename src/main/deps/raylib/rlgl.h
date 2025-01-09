@@ -106,7 +106,7 @@
 
 #ifndef RLGL_H
 #define RLGL_H
-
+#define GRAPHICS_API_OPENGL_ES3
 #define RLGL_VERSION  "4.5"
 
 // Function specifiers in case library is build/used as a shared library (Windows)
