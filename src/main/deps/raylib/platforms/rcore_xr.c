@@ -5,22 +5,7 @@
 #include "xr_support.h"
 //#include "../raylib.h"
 
-void InitVR(struct android_app* app) {
-    ALOGV("----------------------------------------------------------------");
-    ALOGV("android_app_entry()");
-    ALOGV("    android_main()");
-
-    JNIEnv *Env;
-#if defined(__cplusplus)
-    app->activity->vm->AttachCurrentThread(&Env, nullptr);
-#else
-    (*app->activity->vm)->AttachCurrentThread(app->activity->vm, &Env, NULL);
-#endif
-
-    // Note that AttachCurrentThread will reset the thread name.
-    prctl(PR_SET_NAME, (long) "OVR::Main", 0, 0, 0);
-    ovrApp_Clear(&appState);
-
+void InitializeXRLoader(struct android_app* app) {
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
     xrGetInstanceProcAddr(
             XR_NULL_HANDLE, "xrInitializeLoaderKHR", (PFN_xrVoidFunction *) &xrInitializeLoaderKHR);
@@ -31,45 +16,33 @@ void InitVR(struct android_app* app) {
         loaderInitializeInfoAndroid.applicationContext = app->activity->clazz;
         xrInitializeLoaderKHR((XrLoaderInitInfoBaseHeaderKHR *) &loaderInitializeInfoAndroid);
     }
+}
 
-    // Log available layers.
-    {
-        uint32_t numLayers = 0;
-        OXR(xrEnumerateApiLayerProperties(0, &numLayers, NULL));
+void LogAvailableLayers() {
+        // Log available layers.
+        {
+            uint32_t numLayers = 0;
+            OXR(xrEnumerateApiLayerProperties(0, &numLayers, NULL));
 
-        XrApiLayerProperties *layerProperties =
-                (XrApiLayerProperties *) malloc(numLayers * sizeof(XrApiLayerProperties));
+            XrApiLayerProperties *layerProperties =
+            (XrApiLayerProperties *) malloc(numLayers * sizeof(XrApiLayerProperties));
 
-        for (uint32_t i = 0; i < numLayers; i++) {
-            layerProperties[i].type = XR_TYPE_API_LAYER_PROPERTIES;
-            layerProperties[i].next = NULL;
+            for (uint32_t i = 0; i < numLayers; i++) {
+                layerProperties[i].type = XR_TYPE_API_LAYER_PROPERTIES;
+                layerProperties[i].next = NULL;
+            }
+
+            OXR(xrEnumerateApiLayerProperties(numLayers, &numLayers, layerProperties));
+
+            for (uint32_t i = 0; i < numLayers; i++) {
+                ALOGV("Found layer %s", layerProperties[i].layerName);
+            }
+
+            free(layerProperties);
         }
+};
 
-        OXR(xrEnumerateApiLayerProperties(numLayers, &numLayers, layerProperties));
-
-        for (uint32_t i = 0; i < numLayers; i++) {
-            ALOGV("Found layer %s", layerProperties[i].layerName);
-        }
-
-        free(layerProperties);
-    }
-
-    // Check that the extensions required are present.
-    const char *const requiredExtensionNames[] = {
-            XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
-            XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
-            XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
-            XR_KHR_COMPOSITION_LAYER_CUBE_EXTENSION_NAME,
-            XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
-            XR_KHR_COMPOSITION_LAYER_EQUIRECT2_EXTENSION_NAME,
-            XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
-            XR_FB_COLOR_SPACE_EXTENSION_NAME,
-            XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
-            XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME,
-            XR_FB_FOVEATION_EXTENSION_NAME,
-            XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME};
-    const uint32_t numRequiredExtensions =
-            sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
+void CheckRequiredExtensions(uint32_t numRequiredExtensions, const char *const *requiredExtensionNames) {
 
     // Check the list of required extensions against what is supported by the runtime.
     {
@@ -109,7 +82,9 @@ void InitVR(struct android_app* app) {
 
         free(extensionProperties);
     }
+}
 
+XrResult CreateXRResult(uint32_t numRequiredExtensions, const char *const *requiredExtensionNames) {
     // Create the OpenXR instance.
     XrApplicationInfo appInfo;
     memset(&appInfo, 0, sizeof(appInfo));
@@ -142,7 +117,10 @@ void InitVR(struct android_app* app) {
             XR_VERSION_MAJOR(instanceInfo.runtimeVersion),
             XR_VERSION_MINOR(instanceInfo.runtimeVersion),
             XR_VERSION_PATCH(instanceInfo.runtimeVersion));
+    return initResult;
+}
 
+XrSystemId CreateXRSystemID(XrResult initResult) {
     XrSystemGetInfo systemGetInfo = {XR_TYPE_SYSTEM_GET_INFO};
     systemGetInfo.formFactor = XR_FORM_FACTOR_HEAD_MOUNTED_DISPLAY;
 
@@ -181,7 +159,10 @@ void InitVR(struct android_app* app) {
     ALOGV("System Color Space Properties: colorspace=%d", colorSpacePropertiesFB.colorSpace);
 
     assert(ovrMaxLayerCount <= systemProperties.graphicsProperties.maxLayerCount);
+    return systemId;
+}
 
+void InitializeGraphics(XrSystemId systemId, XrResult initResult) {
     // Get the graphics requirements.
     PFN_xrGetOpenGLESGraphicsRequirementsKHR pfnGetOpenGLESGraphicsRequirementsKHR = NULL;
     OXR(xrGetInstanceProcAddr(
@@ -213,6 +194,7 @@ void InitVR(struct android_app* app) {
     appState.MainThreadTid = gettid();
 
     appState.SystemId = systemId;
+
 
     // Create the OpenXR Session.
     XrGraphicsBindingOpenGLESAndroidKHR graphicsBindingAndroidGLES = {
@@ -408,7 +390,9 @@ void InitVR(struct android_app* app) {
         OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, 0.0f));
         ALOGV("Requesting system default display refresh rate");
     }
+}
 
+XrView* ConfigureSpaces() {
     bool stageSupported = false;
 
     uint32_t numOutputSpaces = 0;
@@ -461,6 +445,54 @@ void InitVR(struct android_app* app) {
         memset(&projections[eye], 0, sizeof(XrView));
         projections[eye].type = XR_TYPE_VIEW;
     }
+    return projections;
+}
+
+void CreateActions() {}
+
+
+void InitVR(struct android_app* app) {
+    ALOGV("----------------------------------------------------------------");
+    ALOGV("android_app_entry()");
+    ALOGV("    android_main()");
+
+    JNIEnv *Env;
+#if defined(__cplusplus)
+    app->activity->vm->AttachCurrentThread(&Env, nullptr);
+#else
+    (*app->activity->vm)->AttachCurrentThread(app->activity->vm, &Env, NULL);
+#endif
+
+    // Note that AttachCurrentThread will reset the thread name.
+    prctl(PR_SET_NAME, (long) "OVR::Main", 0, 0, 0);
+    ovrApp_Clear(&appState);
+
+    InitializeXRLoader(app);
+
+    LogAvailableLayers();
+
+    // Check that the extensions required are present.
+    const char *const requiredExtensionNames[] = {
+            XR_KHR_OPENGL_ES_ENABLE_EXTENSION_NAME,
+            XR_EXT_PERFORMANCE_SETTINGS_EXTENSION_NAME,
+            XR_KHR_ANDROID_THREAD_SETTINGS_EXTENSION_NAME,
+            XR_KHR_COMPOSITION_LAYER_CUBE_EXTENSION_NAME,
+            XR_KHR_COMPOSITION_LAYER_CYLINDER_EXTENSION_NAME,
+            XR_KHR_COMPOSITION_LAYER_EQUIRECT2_EXTENSION_NAME,
+            XR_FB_DISPLAY_REFRESH_RATE_EXTENSION_NAME,
+            XR_FB_COLOR_SPACE_EXTENSION_NAME,
+            XR_FB_SWAPCHAIN_UPDATE_STATE_EXTENSION_NAME,
+            XR_FB_SWAPCHAIN_UPDATE_STATE_OPENGL_ES_EXTENSION_NAME,
+            XR_FB_FOVEATION_EXTENSION_NAME,
+            XR_FB_FOVEATION_CONFIGURATION_EXTENSION_NAME};
+    const uint32_t numRequiredExtensions =
+            sizeof(requiredExtensionNames) / sizeof(requiredExtensionNames[0]);
+
+    CheckRequiredExtensions(numRequiredExtensions, requiredExtensionNames);
+    XrResult initResult = CreateXRResult(numRequiredExtensions, requiredExtensionNames);
+    XrSystemId systemId = CreateXRSystemID(initResult);
+    InitializeGraphics(systemId, initResult);
+    XrView* projections = ConfigureSpaces();
 
     // Actions
     XrActionSet runningActionSet =
