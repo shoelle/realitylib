@@ -647,6 +647,34 @@ void InitVR(struct android_app* app) {
         }
     }
 
+
+    struct appState{
+        XrActionSuggestedBinding bindings;
+        int currBinding;
+        XrSessionActionSetsAttachInfo attachInfo;
+
+        // Enumerate actions
+        XrPath actionPathsBuffer[16];
+        char stringBuffer[256];
+        XrAction actionsToEnumerate;
+
+        uint32_t countOutput;
+
+        XrSpace leftControllerAimSpace;
+        XrSpace rightControllerAimSpace;
+        XrSpace leftControllerGripSpace;
+        XrSpace rightControllerGripSpace;
+
+        bool stageBoundsDirty;
+
+        // App-specific input
+        float appQuadPositionX;
+        float appQuadPositionY;
+        float appCylPositionX;
+        float appCylPositionY;
+
+
+    };
     // Action creation
     {
         // Map bindings
