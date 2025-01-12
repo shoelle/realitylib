@@ -452,7 +452,7 @@ void CreateActions() {
 
 }
 
-void Oppenheimer(XrView* projections){
+void CloseXRPlatform(XrView* projections){ //TODO: CHANGE THIS to ClosePlatform() once we figure out how to determine which recore_... to choose at runtime
     ovrRenderer_Destroy(&appState.Renderer);
 
 
@@ -1282,7 +1282,7 @@ void InitVR(struct android_app* app) {
 
         OXR(xrEndFrame(appState.Session, &endFrameInfo));
     }
-    Oppenheimer(projections);
+    CloseXRPlatform(projections);
 
 #if defined(__cplusplus)
 app->activity->vm->DetachCurrentThread();
