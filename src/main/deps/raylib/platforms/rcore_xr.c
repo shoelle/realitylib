@@ -448,7 +448,32 @@ XrView* ConfigureSpaces() {
     return projections;
 }
 
-void CreateActions() {}
+void CreateActions() {
+
+}
+
+void Oppenheimer(XrView* projections){
+    ovrRenderer_Destroy(&appState.Renderer);
+
+
+    free(projections);
+
+    ovrScene_Destroy(&appState.Scene);
+    ovrEgl_DestroyContext(&appState.Egl);
+
+    OXR(xrDestroySpace(appState.HeadSpace));
+    OXR(xrDestroySpace(appState.LocalSpace));
+    // StageSpace is optional.
+    if (appState.StageSpace != XR_NULL_HANDLE) {
+        OXR(xrDestroySpace(appState.StageSpace));
+    }
+    OXR(xrDestroySpace(appState.FakeStageSpace));
+    appState.CurrentSpace = XR_NULL_HANDLE;
+    OXR(xrDestroySession(appState.Session));
+    OXR(xrDestroyInstance(appState.Instance));
+
+    ovrApp_Destroy(&appState);
+}
 
 
 void InitVR(struct android_app* app) {
@@ -494,6 +519,7 @@ void InitVR(struct android_app* app) {
     InitializeGraphics(systemId, initResult);
     XrView* projections = ConfigureSpaces();
 
+    
     // Actions
     XrActionSet runningActionSet =
             CreateActionSet(1, "running_action_set", "Action Set used on main loop");
@@ -810,6 +836,7 @@ void InitVR(struct android_app* app) {
 
     bool stageBoundsDirty = true;
 
+
     // App-specific input
     float appQuadPositionX = 0.0f;
     float appQuadPositionY = 0.0f;
@@ -1049,6 +1076,8 @@ void InitVR(struct android_app* app) {
             }
         }
 
+
+
         // Set-up the compositor layers for this frame.
         // NOTE: Multiple independent layers are allowed, but they need to be added
         // in a depth consistent order.
@@ -1225,27 +1254,7 @@ void InitVR(struct android_app* app) {
 
         OXR(xrEndFrame(appState.Session, &endFrameInfo));
     }
-
-    ovrRenderer_Destroy(&appState.Renderer);
-
-
-    free(projections);
-
-    ovrScene_Destroy(&appState.Scene);
-    ovrEgl_DestroyContext(&appState.Egl);
-
-    OXR(xrDestroySpace(appState.HeadSpace));
-    OXR(xrDestroySpace(appState.LocalSpace));
-    // StageSpace is optional.
-    if (appState.StageSpace != XR_NULL_HANDLE) {
-        OXR(xrDestroySpace(appState.StageSpace));
-    }
-    OXR(xrDestroySpace(appState.FakeStageSpace));
-    appState.CurrentSpace = XR_NULL_HANDLE;
-    OXR(xrDestroySession(appState.Session));
-    OXR(xrDestroyInstance(appState.Instance));
-
-    ovrApp_Destroy(&appState);
+    Oppenheimer(projections);
 
 #if defined(__cplusplus)
 app->activity->vm->DetachCurrentThread();
