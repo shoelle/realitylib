@@ -5,6 +5,10 @@
 #include "xr_support.h"
 //#include "../raylib.h"
 
+bool AppShouldClose(struct android_app* app){
+    return app->destroyRequested != 0;
+}
+
 void InitializeXRLoader(struct android_app* app) {
     PFN_xrInitializeLoaderKHR xrInitializeLoaderKHR;
     xrGetInstanceProcAddr(
@@ -475,6 +479,47 @@ void CloseXRPlatform(XrView* projections){ //TODO: CHANGE THIS to ClosePlatform(
     ovrApp_Destroy(&appState);
 }
 
+XrView* projections;
+
+    XrActionSuggestedBinding bindings;
+    int currBinding;
+    XrSessionActionSetsAttachInfo attachInfo;
+
+    // Enumerate actions
+    XrPath actionPathsBuffer[16];
+    char stringBuffer[256];
+    XrAction actionsToEnumerate;
+
+    uint32_t countOutput;
+
+    XrSpace leftControllerAimSpace;
+    XrSpace rightControllerAimSpace;
+    XrSpace leftControllerGripSpace;
+    XrSpace rightControllerGripSpace;
+
+    bool stageBoundsDirty;
+
+    // App-specific input
+    float appQuadPositionX;
+    float appQuadPositionY;
+    float appCylPositionX;
+    float appCylPositionY;
+XrAction vibrateLeftToggle;
+XrAction vibrateRightToggle;
+XrAction vibrateLeftFeedback;
+XrAction vibrateRightFeedback;
+XrAction aimPoseAction;
+XrAction gripPoseAction;
+XrPath rightHandPath;
+XrPath leftHandPath;
+bool useSimpleProfile = false;
+XrActionSet runningActionSet;
+XrAction toggleAction;
+XrAction moveOnXAction;
+XrAction moveOnYAction;
+XrAction moveOnJoystickAction;
+XrAction thumbstickClickAction;
+
 
 void InitVR(struct android_app* app) {
     ALOGV("----------------------------------------------------------------");
@@ -517,22 +562,22 @@ void InitVR(struct android_app* app) {
     XrResult initResult = CreateXRResult(numRequiredExtensions, requiredExtensionNames);
     XrSystemId systemId = CreateXRSystemID(initResult);
     InitializeGraphics(systemId, initResult);
-    XrView* projections = ConfigureSpaces();
+    projections = ConfigureSpaces();
 
     
     // Actions
-    XrActionSet runningActionSet =
+    runningActionSet =
             CreateActionSet(1, "running_action_set", "Action Set used on main loop");
-    XrAction toggleAction =
+    toggleAction =
             CreateAction(runningActionSet, XR_ACTION_TYPE_BOOLEAN_INPUT, "toggle", "Toggle", 0,
                          NULL);
-    XrAction moveOnXAction = CreateAction(
+    moveOnXAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_x", "Move on X", 0, NULL);
-    XrAction moveOnYAction = CreateAction(
+    moveOnYAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_y", "Move on Y", 0, NULL);
-    XrAction moveOnJoystickAction = CreateAction(
+    moveOnJoystickAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_joy", "Move on Joy", 0, NULL);
-    XrAction thumbstickClickAction = CreateAction(
+    thumbstickClickAction = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_BOOLEAN_INPUT,
             "thumbstick_click",
@@ -540,28 +585,28 @@ void InitVR(struct android_app* app) {
             0,
             NULL);
 
-    XrAction vibrateLeftToggle = CreateAction(
+    vibrateLeftToggle = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_BOOLEAN_INPUT,
             "vibrate_left",
             "Vibrate Left Controller",
             0,
             NULL);
-    XrAction vibrateRightToggle = CreateAction(
+    vibrateRightToggle = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_BOOLEAN_INPUT,
             "vibrate_right",
             "Vibrate Right Controller",
             0,
             NULL);
-    XrAction vibrateLeftFeedback = CreateAction(
+    vibrateLeftFeedback = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_VIBRATION_OUTPUT,
             "vibrate_left_feedback",
             "Vibrate Left Controller Feedback",
             0,
             NULL);
-    XrAction vibrateRightFeedback = CreateAction(
+    vibrateRightFeedback = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_VIBRATION_OUTPUT,
             "vibrate_right_feedback",
@@ -569,15 +614,13 @@ void InitVR(struct android_app* app) {
             0,
             NULL);
 
-    XrPath leftHandPath;
     OXR(xrStringToPath(appState.Instance, "/user/hand/left", &leftHandPath));
-    XrPath rightHandPath;
     OXR(xrStringToPath(appState.Instance, "/user/hand/right", &rightHandPath));
     XrPath handSubactionPaths[2] = {leftHandPath, rightHandPath};
 
-    XrAction aimPoseAction = CreateAction(
+    aimPoseAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "aim_pose", NULL, 2, handSubactionPaths);
-    XrAction gripPoseAction = CreateAction(
+    gripPoseAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_POSE_INPUT, "grip_pose", NULL, 2, handSubactionPaths);
 
     XrPath interactionProfilePath = XR_NULL_PATH;
@@ -594,7 +637,6 @@ void InitVR(struct android_app* app) {
             &interactionProfilePathKHRSimple));
 
     // Toggle this to force simple as a first choice, otherwise use it as a last resort
-    bool useSimpleProfile = false; /// true;
     if (useSimpleProfile) {
         ALOGV("xrSuggestInteractionProfileBindings found bindings for Khronos SIMPLE controller");
         interactionProfilePath = interactionProfilePathKHRSimple;
@@ -646,35 +688,6 @@ void InitVR(struct android_app* app) {
             }
         }
     }
-
-
-    struct appState{
-        XrActionSuggestedBinding bindings;
-        int currBinding;
-        XrSessionActionSetsAttachInfo attachInfo;
-
-        // Enumerate actions
-        XrPath actionPathsBuffer[16];
-        char stringBuffer[256];
-        XrAction actionsToEnumerate;
-
-        uint32_t countOutput;
-
-        XrSpace leftControllerAimSpace;
-        XrSpace rightControllerAimSpace;
-        XrSpace leftControllerGripSpace;
-        XrSpace rightControllerGripSpace;
-
-        bool stageBoundsDirty;
-
-        // App-specific input
-        float appQuadPositionX;
-        float appQuadPositionY;
-        float appCylPositionX;
-        float appCylPositionY;
-
-
-    };
     // Action creation
     {
         // Map bindings
@@ -871,422 +884,436 @@ void InitVR(struct android_app* app) {
     float appCylPositionX = 0.0f;
     float appCylPositionY = 0.0f;
 
-    while (app->destroyRequested == 0) {
-        // Read all pending events.
-        for (;;) {
-            int events;
-            struct android_poll_source *source;
-            // If the timeout is zero, returns immediately without blocking.
-            // If the timeout is negative, waits indefinitely until an event appears.
-            const int timeoutMilliseconds =
-                    (appState.Resumed == false && appState.SessionActive == false &&
-                     app->destroyRequested == 0)
-                    ? -1
-                    : 0;
-            if (ALooper_pollAll(timeoutMilliseconds, NULL, &events, (void **) &source) < 0) {
-                break;
-            }
-
-            // Process this event.
-            if (source != NULL) {
-                source->process(app, source);
-            }
-        }
-
-        ovrApp_HandleXrEvents(&appState);
-
-        if (appState.SessionActive == false) {
-            continue;
-        }
-
-        if (leftControllerAimSpace == XR_NULL_HANDLE) {
-            leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
-        }
-        if (rightControllerAimSpace == XR_NULL_HANDLE) {
-            rightControllerAimSpace = CreateActionSpace(aimPoseAction, rightHandPath);
-        }
-        if (leftControllerGripSpace == XR_NULL_HANDLE) {
-            leftControllerGripSpace = CreateActionSpace(gripPoseAction, leftHandPath);
-        }
-        if (rightControllerGripSpace == XR_NULL_HANDLE) {
-            rightControllerGripSpace = CreateActionSpace(gripPoseAction, rightHandPath);
-        }
-
-        // Create the scene if not yet created.
-        // The scene is created here to be able to show a loading icon.
-        if (!ovrScene_IsCreated(&appState.Scene)) {
-            ovrScene_Create(
-                    app->activity->assetManager, appState.Instance, appState.Session,
-                    &appState.Scene);
-        }
-
-        if (stageBoundsDirty) {
-            UpdateStageBounds(&appState);
-            stageBoundsDirty = false;
-        }
-
-        // NOTE: OpenXR does not use the concept of frame indices. Instead,
-        // XrWaitFrame returns the predicted display time.
-        XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
-        XrFrameState frameState = {XR_TYPE_FRAME_STATE};
-
-        OXR(xrWaitFrame(appState.Session, &waitFrameInfo, &frameState));
-
-        // Get the HMD pose, predicted for the middle of the time period during which
-        // the new eye images will be displayed. The number of frames predicted ahead
-        // depends on the pipeline depth of the engine and the synthesis rate.
-        // The better the prediction, the less black will be pulled in at the edges.
-        XrFrameBeginInfo beginFrameDesc = {XR_TYPE_FRAME_BEGIN_INFO};
-        OXR(xrBeginFrame(appState.Session, &beginFrameDesc));
-
-        XrSpaceLocation loc = {XR_TYPE_SPACE_LOCATION};
-        OXR(xrLocateSpace(
-                appState.HeadSpace, appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
-        XrPosef xfStageFromHead = loc.pose;
-        OXR(xrLocateSpace(
-                appState.HeadSpace, appState.LocalSpace, frameState.predictedDisplayTime, &loc));
-
-        XrViewLocateInfo projectionInfo = {XR_TYPE_VIEW_LOCATE_INFO};
-        projectionInfo.viewConfigurationType = appState.ViewportConfig.viewConfigurationType;
-        projectionInfo.displayTime = frameState.predictedDisplayTime;
-        projectionInfo.space = appState.HeadSpace;
-
-        XrViewState viewState = {XR_TYPE_VIEW_STATE};
-
-        uint32_t projectionCapacityInput = ovrMaxNumEyes;
-        uint32_t projectionCountOutput = projectionCapacityInput;
-
-        OXR(xrLocateViews(
-                appState.Session,
-                &projectionInfo,
-                &viewState,
-                projectionCapacityInput,
-                &projectionCountOutput,
-                projections));
-        //
-
-        ovrSceneMatrices sceneMatrices;
-        XrPosef viewTransform[2];
-
-        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-            XrPosef xfHeadFromEye = projections[eye].pose;
-            XrPosef xfStageFromEye;
-            XrPosef_Multiply(&xfStageFromEye, &xfStageFromHead, &xfHeadFromEye);
-            XrPosef_Invert(&viewTransform[eye], &xfStageFromEye);
-
-            XrMatrix4x4f_CreateFromRigidTransform(&sceneMatrices.ViewMatrix[eye],
-                                                  &viewTransform[eye]);
-
-            const XrFovf fov = projections[eye].fov;
-            XrMatrix4x4f_CreateProjectionFov(
-                    &sceneMatrices.ProjectionMatrix[eye], GRAPHICS_OPENGL_ES, fov, 0.1f, 0.0f);
-        }
-
-        // update input information
-        XrAction controller[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
-        XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
-        XrSpace controllerSpace[] = {
-                leftControllerAimSpace,
-                leftControllerGripSpace,
-                rightControllerAimSpace,
-                rightControllerGripSpace,
-        };
-        for (int i = 0; i < 4; i++) {
-            if (ActionPoseIsActive(controller[i], subactionPath[i])) {
-                LocVel lv = GetSpaceLocVel(controllerSpace[i], frameState.predictedDisplayTime);
-                appState.Scene.TrackedController[i].Active =
-                        (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
-                appState.Scene.TrackedController[i].Pose = lv.loc.pose;
-                for (int j = 0; j < 3; j++) {
-                    float dt = 0.01f; // use 0.2f for for testing velocity vectors
-                    (&appState.Scene.TrackedController[i].Pose.position.x)[j] +=
-                            (&lv.vel.linearVelocity.x)[j] * dt;
-                }
-            } else {
-                ovrTrackedController_Clear(&appState.Scene.TrackedController[i]);
-            }
-        }
-
-        // OpenXR input
-        {
-            // sync action data
-            XrActiveActionSet activeActionSet = {0};
-            activeActionSet.actionSet = runningActionSet;
-            activeActionSet.subactionPath = XR_NULL_PATH;
-
-            XrActionsSyncInfo syncInfo = {XR_TYPE_ACTIONS_SYNC_INFO};
-            syncInfo.countActiveActionSets = 1;
-            syncInfo.activeActionSets = &activeActionSet;
-            OXR(xrSyncActions(appState.Session, &syncInfo));
-
-            // query input action states
-            XrActionStateGetInfo getInfo = {XR_TYPE_ACTION_STATE_GET_INFO};
-            getInfo.subactionPath = XR_NULL_PATH;
-
-            XrActionStateBoolean toggleState = GetActionStateBoolean(toggleAction);
-            XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
-            XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
-            XrActionStateBoolean thumbstickClickState =
-                    GetActionStateBoolean(thumbstickClickAction);
-
-            // Update app logic based on input
-            if (toggleState.changedSinceLastSync) {
-                // Also stop haptics
-                XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-                hapticActionInfo.action = vibrateLeftFeedback;
-                OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-                hapticActionInfo.action = vibrateRightFeedback;
-                OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-            }
-
-            if (thumbstickClickState.changedSinceLastSync &&
-                thumbstickClickState.currentState == XR_TRUE) {
-                float currentRefreshRate = 0.0f;
-                OXR(appState.pfnGetDisplayRefreshRate(appState.Session, &currentRefreshRate));
-                ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
-
-                const int requestedRateIndex = appState.RequestedDisplayRefreshRateIndex++ %
-                                               appState.NumSupportedDisplayRefreshRates;
-
-                const float requestRefreshRate =
-                        appState.SupportedDisplayRefreshRates[requestedRateIndex];
-                ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
-                OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, requestRefreshRate));
-            }
-
-            // The KHR simple profile doesn't have these actions, so the getters will fail
-            // and flood the log with errors.
-            if (useSimpleProfile == false) {
-                XrActionStateFloat moveXState = GetActionStateFloat(moveOnXAction);
-                XrActionStateFloat moveYState = GetActionStateFloat(moveOnYAction);
-                if (moveXState.changedSinceLastSync) {
-                    appQuadPositionX = moveXState.currentState;
-                }
-                if (moveYState.changedSinceLastSync) {
-                    appQuadPositionY = moveYState.currentState;
-                }
-
-                XrActionStateVector2f moveJoystickState =
-                        GetActionStateVector2(moveOnJoystickAction);
-                if (moveJoystickState.changedSinceLastSync) {
-                    appCylPositionX = moveJoystickState.currentState.x;
-                    appCylPositionY = moveJoystickState.currentState.y;
-                }
-            }
-
-            // Haptics
-            // NOTE: using the values from the example in the spec
-            if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
-                ALOGV("Firing Haptics on L ... ");
-                // fire haptics using output action
-                XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
-                vibration.amplitude = 0.5;
-                vibration.duration = ToXrTime(0.5); // half a second
-                vibration.frequency = 3000;
-                XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-                hapticActionInfo.action = vibrateLeftFeedback;
-                OXR(xrApplyHapticFeedback(
-                        appState.Session, &hapticActionInfo,
-                        (const XrHapticBaseHeader *) &vibration));
-            }
-            if (vibrateRightState.changedSinceLastSync && vibrateRightState.currentState) {
-                ALOGV("Firing Haptics on R ... ");
-                // fire haptics using output action
-                XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
-                vibration.amplitude = 0.5;
-                vibration.duration = XR_MIN_HAPTIC_DURATION;
-                vibration.frequency = 3000;
-                XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-                hapticActionInfo.action = vibrateRightFeedback;
-                OXR(xrApplyHapticFeedback(
-                        appState.Session, &hapticActionInfo,
-                        (const XrHapticBaseHeader *) &vibration));
-            }
-        }
-
-
-
-        // Set-up the compositor layers for this frame.
-        // NOTE: Multiple independent layers are allowed, but they need to be added
-        // in a depth consistent order.
-
-        XrCompositionLayerProjectionView projection_layer_elements[2] = {
-                {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW},
-                {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW}};
-
-        appState.LayerCount = 0;
-        memset(appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
-        bool shouldRenderWorldLayer = true;
-        bool hasCubeMapBackground = appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE;
-
-        // Add a background Layer
-        if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
-            hasCubeMapBackground /* data loaded from sdcard */) {
-            XrCompositionLayerCubeKHR cube_layer = {XR_TYPE_COMPOSITION_LAYER_CUBE_KHR};
-            cube_layer.layerFlags = 0;
-            cube_layer.space = appState.CurrentSpace;
-            cube_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-            cube_layer.swapchain = appState.Scene.CubeMapSwapChain.Handle;
-            XrQuaternionf_CreateIdentity(&cube_layer.orientation);
-
-            appState.Layers[appState.LayerCount++].Cube = cube_layer;
-            shouldRenderWorldLayer = false;
-        } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
-            XrCompositionLayerEquirect2KHR equirect_layer = {
-                    XR_TYPE_COMPOSITION_LAYER_EQUIRECT2_KHR};
-            equirect_layer.layerFlags = 0;
-            equirect_layer.space = appState.CurrentSpace;
-            equirect_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-            memset(&equirect_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-            equirect_layer.subImage.swapchain = appState.Scene.EquirectSwapChain.Handle;
-            equirect_layer.subImage.imageRect.offset.x = 0;
-            equirect_layer.subImage.imageRect.offset.y = 0;
-            equirect_layer.subImage.imageRect.extent.width = appState.Scene.EquirectSwapChain.Width;
-            equirect_layer.subImage.imageRect.extent.height =
-                    appState.Scene.EquirectSwapChain.Height;
-            equirect_layer.subImage.imageArrayIndex = 0;
-            XrPosef_CreateIdentity(&equirect_layer.pose);
-            equirect_layer.radius = 10.0f;
-            const float centralHorizontalAngle = (2.0f * MATH_PI) / 3.0f;
-            const float upperVerticalAngle =
-                    (MATH_PI / 2.0f) * (2.0f / 3.0f); // 60 degrees north latitude
-            const float lowerVerticalAngle = 0.0f; // equator
-            equirect_layer.centralHorizontalAngle = centralHorizontalAngle;
-            equirect_layer.upperVerticalAngle = upperVerticalAngle;
-            equirect_layer.lowerVerticalAngle = lowerVerticalAngle;
-
-            appState.Layers[appState.LayerCount++].Equirect2 = equirect_layer;
-        }
-
-        // Render the world-view layer (simple ground plane)
-        if (shouldRenderWorldLayer) {
-            ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
-
-            XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
-            projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-            projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
-            projection_layer.space = appState.CurrentSpace;
-            projection_layer.viewCount = ovrMaxNumEyes;
-            projection_layer.views = projection_layer_elements;
-
-            for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-                ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
-
-                memset(
-                        &projection_layer_elements[eye], 0,
-                        sizeof(XrCompositionLayerProjectionView));
-                projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-
-                XrPosef_Invert(&projection_layer_elements[eye].pose, &viewTransform[eye]);
-                projection_layer_elements[eye].fov = projections[eye].fov;
-
-                memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
-                projection_layer_elements[eye].subImage.swapchain =
-                        frameBuffer->ColorSwapChain.Handle;
-                projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
-                projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
-                projection_layer_elements[eye].subImage.imageRect.extent.width =
-                        frameBuffer->ColorSwapChain.Width;
-                projection_layer_elements[eye].subImage.imageRect.extent.height =
-                        frameBuffer->ColorSwapChain.Height;
-                projection_layer_elements[eye].subImage.imageArrayIndex = 0;
-            }
-
-            appState.Layers[appState.LayerCount++].Projection = projection_layer;
-        }
-
-        // Build the cylinder layer
-        {
-            XrCompositionLayerCylinderKHR cylinder_layer = {XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
-            cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-            cylinder_layer.space = appState.LocalSpace;
-            cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-            memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-            cylinder_layer.subImage.swapchain = appState.Scene.CylinderSwapChain.Handle;
-            cylinder_layer.subImage.imageRect.offset.x = 0;
-            cylinder_layer.subImage.imageRect.offset.y = 0;
-            cylinder_layer.subImage.imageRect.extent.width = appState.Scene.CylinderSwapChain.Width;
-            cylinder_layer.subImage.imageRect.extent.height =
-                    appState.Scene.CylinderSwapChain.Height;
-            cylinder_layer.subImage.imageArrayIndex = 0;
-            const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-            const XrVector3f pos = {appCylPositionX, appCylPositionY, 0.0f};
-            XrQuaternionf_CreateFromAxisAngle(&cylinder_layer.pose.orientation, &axis,
-                                              -45.0f * MATH_PI / 180.0f);
-            cylinder_layer.pose.position = pos;
-            cylinder_layer.radius = 2.0f;
-
-            cylinder_layer.centralAngle = MATH_PI / 4.0;
-            cylinder_layer.aspectRatio = 2.0f;
-
-            appState.Layers[appState.LayerCount++].Cylinder = cylinder_layer;
-        }
-
-        // Build the quad layer
-        {
-            const XrVector3f axis = {0.0f, 1.0f, 0.0f};
-            XrVector3f pos = {
-                    -2.0f * (1.0f - appQuadPositionX), 2.0f * (1.0f - appQuadPositionY), -2.0f};
-            XrExtent2Df size = {1.0f, 1.0f};
-
-            XrCompositionLayerQuad quad_layer_left = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-            quad_layer_left.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-            quad_layer_left.space = appState.CurrentSpace;
-            quad_layer_left.eyeVisibility = XR_EYE_VISIBILITY_LEFT;
-            memset(&quad_layer_left.subImage, 0, sizeof(XrSwapchainSubImage));
-            quad_layer_left.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
-            quad_layer_left.subImage.imageRect.offset.x = 0;
-            quad_layer_left.subImage.imageRect.offset.y = 0;
-            quad_layer_left.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
-            quad_layer_left.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
-            quad_layer_left.subImage.imageArrayIndex = 0;
-            XrPosef_CreateIdentity(&quad_layer_left.pose);
-            XrQuaternionf_CreateFromAxisAngle(&quad_layer_left.pose.orientation, &axis,
-                                              45.0f * MATH_PI / 180.0f);
-            quad_layer_left.pose.position = pos;
-            quad_layer_left.size = size;
-
-            appState.Layers[appState.LayerCount++].Quad = quad_layer_left;
-
-            XrCompositionLayerQuad quad_layer_right = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-            quad_layer_right.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-            quad_layer_right.space = appState.CurrentSpace;
-            quad_layer_right.eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
-            memset(&quad_layer_right.subImage, 0, sizeof(XrSwapchainSubImage));
-            quad_layer_right.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
-            quad_layer_right.subImage.imageRect.offset.x = 0;
-            quad_layer_right.subImage.imageRect.offset.y = 0;
-            quad_layer_right.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
-            quad_layer_right.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
-            quad_layer_right.subImage.imageArrayIndex = 0;
-            XrPosef_CreateIdentity(&quad_layer_right.pose);
-            XrQuaternionf_CreateFromAxisAngle(&quad_layer_right.pose.orientation, &axis,
-                                              45.0f * MATH_PI / 180.0f);
-            quad_layer_right.pose.position = pos;
-            quad_layer_right.size = size;
-
-            appState.Layers[appState.LayerCount++].Quad = quad_layer_right;
-        }
-
-        // Compose the layers for this frame.
-        const XrCompositionLayerBaseHeader *layers[ovrMaxLayerCount] = {0};
-        for (int i = 0; i < appState.LayerCount; i++) {
-            layers[i] = (const XrCompositionLayerBaseHeader *) &appState.Layers[i];
-        }
-
-        XrFrameEndInfo endFrameInfo = {XR_TYPE_FRAME_END_INFO};
-        endFrameInfo.displayTime = frameState.predictedDisplayTime;
-        endFrameInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-        endFrameInfo.layerCount = appState.LayerCount;
-        endFrameInfo.layers = layers;
-
-        OXR(xrEndFrame(appState.Session, &endFrameInfo));
-    }
-    CloseXRPlatform(projections);
-
 #if defined(__cplusplus)
 app->activity->vm->DetachCurrentThread();
 #else
 (*app->activity->vm)->DetachCurrentThread(app->activity->vm);
 #endif
+}
+
+void CloseApp(struct android_app* app){
+    CloseXRPlatform(projections);
+    (*app->activity->vm)->DetachCurrentThread(app->activity->vm);
+}
+
+XrFrameState frameState = {XR_TYPE_FRAME_STATE};
+
+void inLoop(struct android_app* app){
+    // Read all pending events.
+    for (;;) {
+        int events;
+        struct android_poll_source *source;
+        // If the timeout is zero, returns immediately without blocking.
+        // If the timeout is negative, waits indefinitely until an event appears.
+        const int timeoutMilliseconds =
+                (appState.Resumed == false && appState.SessionActive == false &&
+                 app->destroyRequested == 0)
+                ? -1
+                : 0;
+        if (ALooper_pollAll(timeoutMilliseconds, NULL, &events, (void **) &source) < 0) {
+            break;
+        }
+
+        // Process this event.
+        if (source != NULL) {
+            source->process(app, source);
+        }
+    }
+
+    ovrApp_HandleXrEvents(&appState);
+
+    if (leftControllerAimSpace == XR_NULL_HANDLE) {
+        leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
+    }
+    if (rightControllerAimSpace == XR_NULL_HANDLE) {
+        rightControllerAimSpace = CreateActionSpace(aimPoseAction, rightHandPath);
+    }
+    if (leftControllerGripSpace == XR_NULL_HANDLE) {
+        leftControllerGripSpace = CreateActionSpace(gripPoseAction, leftHandPath);
+    }
+    if (rightControllerGripSpace == XR_NULL_HANDLE) {
+        rightControllerGripSpace = CreateActionSpace(gripPoseAction, rightHandPath);
+    }
+
+    // Create the scene if not yet created.
+    // The scene is created here to be able to show a loading icon.
+    if (!ovrScene_IsCreated(&appState.Scene)) {
+        ovrScene_Create(
+                app->activity->assetManager, appState.Instance, appState.Session,
+                &appState.Scene);
+    }
+
+    if (stageBoundsDirty) {
+        UpdateStageBounds(&appState);
+        stageBoundsDirty = false;
+    }
+
+    // NOTE: OpenXR does not use the concept of frame indices. Instead,
+    // XrWaitFrame returns the predicted display time.
+
+    // update input information
+    XrAction controller[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    for (int i = 0; i < 4; i++) {
+        if (ActionPoseIsActive(controller[i], subactionPath[i])) {
+            LocVel lv = GetSpaceLocVel(controllerSpace[i], frameState.predictedDisplayTime);
+            appState.Scene.TrackedController[i].Active =
+                    (lv.loc.locationFlags & XR_SPACE_LOCATION_POSITION_VALID_BIT) != 0;
+            appState.Scene.TrackedController[i].Pose = lv.loc.pose;
+            for (int j = 0; j < 3; j++) {
+                float dt = 0.01f; // use 0.2f for for testing velocity vectors
+                (&appState.Scene.TrackedController[i].Pose.position.x)[j] +=
+                        (&lv.vel.linearVelocity.x)[j] * dt;
+            }
+        } else {
+            ovrTrackedController_Clear(&appState.Scene.TrackedController[i]);
+        }
+    }
+
+    // OpenXR input
+    {
+        // sync action data
+        XrActiveActionSet activeActionSet = {0};
+        activeActionSet.actionSet = runningActionSet;
+        activeActionSet.subactionPath = XR_NULL_PATH;
+
+        XrActionsSyncInfo syncInfo = {XR_TYPE_ACTIONS_SYNC_INFO};
+        syncInfo.countActiveActionSets = 1;
+        syncInfo.activeActionSets = &activeActionSet;
+        OXR(xrSyncActions(appState.Session, &syncInfo));
+
+        // query input action states
+        XrActionStateGetInfo getInfo = {XR_TYPE_ACTION_STATE_GET_INFO};
+        getInfo.subactionPath = XR_NULL_PATH;
+
+        XrActionStateBoolean toggleState = GetActionStateBoolean(toggleAction);
+        XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
+        XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
+        XrActionStateBoolean thumbstickClickState =
+                GetActionStateBoolean(thumbstickClickAction);
+
+        // Update app logic based on input
+        if (toggleState.changedSinceLastSync) {
+            // Also stop haptics
+            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
+            hapticActionInfo.action = vibrateLeftFeedback;
+            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
+            hapticActionInfo.action = vibrateRightFeedback;
+            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
+        }
+
+        if (thumbstickClickState.changedSinceLastSync &&
+            thumbstickClickState.currentState == XR_TRUE) {
+            float currentRefreshRate = 0.0f;
+            OXR(appState.pfnGetDisplayRefreshRate(appState.Session, &currentRefreshRate));
+            ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
+
+            const int requestedRateIndex = appState.RequestedDisplayRefreshRateIndex++ %
+                                           appState.NumSupportedDisplayRefreshRates;
+
+            const float requestRefreshRate =
+                    appState.SupportedDisplayRefreshRates[requestedRateIndex];
+            ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
+            OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, requestRefreshRate));
+        }
+
+        // The KHR simple profile doesn't have these actions, so the getters will fail
+        // and flood the log with errors.
+        if (useSimpleProfile == false) {
+            XrActionStateFloat moveXState = GetActionStateFloat(moveOnXAction);
+            XrActionStateFloat moveYState = GetActionStateFloat(moveOnYAction);
+            if (moveXState.changedSinceLastSync) {
+                appQuadPositionX = moveXState.currentState;
+            }
+            if (moveYState.changedSinceLastSync) {
+                appQuadPositionY = moveYState.currentState;
+            }
+
+            XrActionStateVector2f moveJoystickState =
+                    GetActionStateVector2(moveOnJoystickAction);
+            if (moveJoystickState.changedSinceLastSync) {
+                appCylPositionX = moveJoystickState.currentState.x;
+                appCylPositionY = moveJoystickState.currentState.y;
+            }
+        }
+
+        // Haptics
+        // NOTE: using the values from the example in the spec
+        if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
+            ALOGV("Firing Haptics on L ... ");
+            // fire haptics using output action
+            XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
+            vibration.amplitude = 0.5;
+            vibration.duration = ToXrTime(0.5); // half a second
+            vibration.frequency = 3000;
+            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
+            hapticActionInfo.action = vibrateLeftFeedback;
+            OXR(xrApplyHapticFeedback(
+                    appState.Session, &hapticActionInfo,
+                    (const XrHapticBaseHeader *) &vibration));
+        }
+        if (vibrateRightState.changedSinceLastSync && vibrateRightState.currentState) {
+            ALOGV("Firing Haptics on R ... ");
+            // fire haptics using output action
+            XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
+            vibration.amplitude = 0.5;
+            vibration.duration = XR_MIN_HAPTIC_DURATION;
+            vibration.frequency = 3000;
+            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
+            hapticActionInfo.action = vibrateRightFeedback;
+            OXR(xrApplyHapticFeedback(
+                    appState.Session, &hapticActionInfo,
+                    (const XrHapticBaseHeader *) &vibration));
+        }
+    }
+
+
+
+    // Set-up the compositor layers for this frame.
+    // NOTE: Multiple independent layers are allowed, but they need to be added
+    // in a depth consistent order.
+
+    // Compose the layers for this frame.
+}
+
+bool hasCubeMapBackground;
+bool shouldRenderWorldLayer;
+ovrSceneMatrices sceneMatrices;
+XrCompositionLayerProjectionView projection_layer_elements[2];
+XrPosef viewTransform[2];
+
+void BeginVRMode(void){
+    XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
+
+    OXR(xrWaitFrame(appState.Session, &waitFrameInfo, &frameState));
+
+    // Get the HMD pose, predicted for the middle of the time period during which
+    // the new eye images will be displayed. The number of frames predicted ahead
+    // depends on the pipeline depth of the engine and the synthesis rate.
+    // The better the prediction, the less black will be pulled in at the edges.
+    XrFrameBeginInfo beginFrameDesc = {XR_TYPE_FRAME_BEGIN_INFO};
+    OXR(xrBeginFrame(appState.Session, &beginFrameDesc));
+
+    XrSpaceLocation loc = {XR_TYPE_SPACE_LOCATION};
+    OXR(xrLocateSpace(
+            appState.HeadSpace, appState.CurrentSpace, frameState.predictedDisplayTime, &loc));
+    XrPosef xfStageFromHead = loc.pose;
+    OXR(xrLocateSpace(
+            appState.HeadSpace, appState.LocalSpace, frameState.predictedDisplayTime, &loc));
+
+    XrViewLocateInfo projectionInfo = {XR_TYPE_VIEW_LOCATE_INFO};
+    projectionInfo.viewConfigurationType = appState.ViewportConfig.viewConfigurationType;
+    projectionInfo.displayTime = frameState.predictedDisplayTime;
+    projectionInfo.space = appState.HeadSpace;
+
+    XrViewState viewState = {XR_TYPE_VIEW_STATE};
+
+    uint32_t projectionCapacityInput = ovrMaxNumEyes;
+    uint32_t projectionCountOutput = projectionCapacityInput;
+
+    OXR(xrLocateViews(
+            appState.Session,
+            &projectionInfo,
+            &viewState,
+            projectionCapacityInput,
+            &projectionCountOutput,
+            projections));
+    //
+
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+        XrPosef xfHeadFromEye = projections[eye].pose;
+        XrPosef xfStageFromEye;
+        XrPosef_Multiply(&xfStageFromEye, &xfStageFromHead, &xfHeadFromEye);
+        XrPosef_Invert(&viewTransform[eye], &xfStageFromEye);
+
+        XrMatrix4x4f_CreateFromRigidTransform(&sceneMatrices.ViewMatrix[eye],
+                                              &viewTransform[eye]);
+
+        const XrFovf fov = projections[eye].fov;
+        XrMatrix4x4f_CreateProjectionFov(
+                &sceneMatrices.ProjectionMatrix[eye], GRAPHICS_OPENGL_ES, fov, 0.1f, 0.0f);
+    }
+    projection_layer_elements[0] = (struct XrCompositionLayerProjectionView) {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
+    projection_layer_elements[1] = (struct XrCompositionLayerProjectionView) {XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW};
+
+    appState.LayerCount = 0;
+    memset(appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
+    shouldRenderWorldLayer = true;
+    hasCubeMapBackground = appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE;
+}
+
+void ClearBackgroundVR(void){
+    // Add a background Layer
+    if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
+        hasCubeMapBackground /* data loaded from sdcard */) {
+        XrCompositionLayerCubeKHR cube_layer = {XR_TYPE_COMPOSITION_LAYER_CUBE_KHR};
+        cube_layer.layerFlags = 0;
+        cube_layer.space = appState.CurrentSpace;
+        cube_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        cube_layer.swapchain = appState.Scene.CubeMapSwapChain.Handle;
+        XrQuaternionf_CreateIdentity(&cube_layer.orientation);
+
+        appState.Layers[appState.LayerCount++].Cube = cube_layer;
+        shouldRenderWorldLayer = false;
+    } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
+        XrCompositionLayerEquirect2KHR equirect_layer = {
+                XR_TYPE_COMPOSITION_LAYER_EQUIRECT2_KHR};
+        equirect_layer.layerFlags = 0;
+        equirect_layer.space = appState.CurrentSpace;
+        equirect_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        memset(&equirect_layer.subImage, 0, sizeof(XrSwapchainSubImage));
+        equirect_layer.subImage.swapchain = appState.Scene.EquirectSwapChain.Handle;
+        equirect_layer.subImage.imageRect.offset.x = 0;
+        equirect_layer.subImage.imageRect.offset.y = 0;
+        equirect_layer.subImage.imageRect.extent.width = appState.Scene.EquirectSwapChain.Width;
+        equirect_layer.subImage.imageRect.extent.height =
+                appState.Scene.EquirectSwapChain.Height;
+        equirect_layer.subImage.imageArrayIndex = 0;
+        XrPosef_CreateIdentity(&equirect_layer.pose);
+        equirect_layer.radius = 10.0f;
+        const float centralHorizontalAngle = (2.0f * MATH_PI) / 3.0f;
+        const float upperVerticalAngle =
+                (MATH_PI / 2.0f) * (2.0f / 3.0f); // 60 degrees north latitude
+        const float lowerVerticalAngle = 0.0f; // equator
+        equirect_layer.centralHorizontalAngle = centralHorizontalAngle;
+        equirect_layer.upperVerticalAngle = upperVerticalAngle;
+        equirect_layer.lowerVerticalAngle = lowerVerticalAngle;
+
+        appState.Layers[appState.LayerCount++].Equirect2 = equirect_layer;
+    }
+
+    // Render the world-view layer (simple ground plane)
+    if (shouldRenderWorldLayer) {
+        ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
+
+        XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+        projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+        projection_layer.space = appState.CurrentSpace;
+        projection_layer.viewCount = ovrMaxNumEyes;
+        projection_layer.views = projection_layer_elements;
+
+        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+            ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
+
+            memset(
+                    &projection_layer_elements[eye], 0,
+                    sizeof(XrCompositionLayerProjectionView));
+            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+
+            XrPosef_Invert(&projection_layer_elements[eye].pose, &viewTransform[eye]);
+            projection_layer_elements[eye].fov = projections[eye].fov;
+
+            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
+            projection_layer_elements[eye].subImage.swapchain =
+                    frameBuffer->ColorSwapChain.Handle;
+            projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
+            projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
+            projection_layer_elements[eye].subImage.imageRect.extent.width =
+                    frameBuffer->ColorSwapChain.Width;
+            projection_layer_elements[eye].subImage.imageRect.extent.height =
+                    frameBuffer->ColorSwapChain.Height;
+            projection_layer_elements[eye].subImage.imageArrayIndex = 0;
+        }
+
+        appState.Layers[appState.LayerCount++].Projection = projection_layer;
+    }
+}
+
+void DrawCylinderVR(Vector3 axis, Vector3 pos, float radius, float aspectRatio){
+    // Build the cylinder layer
+    {
+        XrCompositionLayerCylinderKHR cylinder_layer = {XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
+        cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        cylinder_layer.space = appState.LocalSpace;
+        cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+        memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
+        cylinder_layer.subImage.swapchain = appState.Scene.CylinderSwapChain.Handle;
+        cylinder_layer.subImage.imageRect.offset.x = 0;
+        cylinder_layer.subImage.imageRect.offset.y = 0;
+        cylinder_layer.subImage.imageRect.extent.width = appState.Scene.CylinderSwapChain.Width;
+        cylinder_layer.subImage.imageRect.extent.height =
+                appState.Scene.CylinderSwapChain.Height;
+        cylinder_layer.subImage.imageArrayIndex = 0;
+        const XrVector3f axis1 = {axis.x, axis.y, axis.z};
+        const XrVector3f pos1 = {pos.x, pos.y, pos.z};
+        XrQuaternionf_CreateFromAxisAngle(&cylinder_layer.pose.orientation, &axis1,
+                                          -45.0f * MATH_PI / 180.0f);
+        cylinder_layer.pose.position = pos1;
+        cylinder_layer.radius = radius;
+
+        cylinder_layer.centralAngle = MATH_PI / 4.0;
+        cylinder_layer.aspectRatio = aspectRatio;
+
+        appState.Layers[appState.LayerCount++].Cylinder = cylinder_layer;
+    }
+}
+
+void DrawQuadLayer(Vector3 axis, Vector3 pos, float width, float height){
+    // Build the quad layer
+    {
+        const XrVector3f axis1 = {axis.x, axis.y, axis.z};
+        XrVector3f pos1 = {
+                pos.x, pos.y, pos.z};
+        XrExtent2Df size1 = {width, height};
+
+        XrCompositionLayerQuad quad_layer_left = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+        quad_layer_left.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        quad_layer_left.space = appState.CurrentSpace;
+        quad_layer_left.eyeVisibility = XR_EYE_VISIBILITY_LEFT;
+        memset(&quad_layer_left.subImage, 0, sizeof(XrSwapchainSubImage));
+        quad_layer_left.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
+        quad_layer_left.subImage.imageRect.offset.x = 0;
+        quad_layer_left.subImage.imageRect.offset.y = 0;
+        quad_layer_left.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
+        quad_layer_left.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
+        quad_layer_left.subImage.imageArrayIndex = 0;
+        XrPosef_CreateIdentity(&quad_layer_left.pose);
+        XrQuaternionf_CreateFromAxisAngle(&quad_layer_left.pose.orientation, &axis,
+                                          45.0f * MATH_PI / 180.0f);
+        quad_layer_left.pose.position = pos1;
+        quad_layer_left.size = size1;
+
+        appState.Layers[appState.LayerCount++].Quad = quad_layer_left;
+
+        XrCompositionLayerQuad quad_layer_right = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+        quad_layer_right.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+        quad_layer_right.space = appState.CurrentSpace;
+        quad_layer_right.eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
+        memset(&quad_layer_right.subImage, 0, sizeof(XrSwapchainSubImage));
+        quad_layer_right.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
+        quad_layer_right.subImage.imageRect.offset.x = 0;
+        quad_layer_right.subImage.imageRect.offset.y = 0;
+        quad_layer_right.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
+        quad_layer_right.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
+        quad_layer_right.subImage.imageArrayIndex = 0;
+        XrPosef_CreateIdentity(&quad_layer_right.pose);
+        XrQuaternionf_CreateFromAxisAngle(&quad_layer_right.pose.orientation, &axis,
+                                          45.0f * MATH_PI / 180.0f);
+        quad_layer_right.pose.position = pos1;
+        quad_layer_right.size = size1;
+
+        appState.Layers[appState.LayerCount++].Quad = quad_layer_right;
+    }
+}
+
+void EndVRMode(void){
+    const XrCompositionLayerBaseHeader *layers[ovrMaxLayerCount] = {0};
+    for (int i = 0; i < appState.LayerCount; i++) {
+        layers[i] = (const XrCompositionLayerBaseHeader *) &appState.Layers[i];
+    }
+
+    XrFrameEndInfo endFrameInfo = {XR_TYPE_FRAME_END_INFO};
+    endFrameInfo.displayTime = frameState.predictedDisplayTime;
+    endFrameInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
+    endFrameInfo.layerCount = appState.LayerCount;
+    endFrameInfo.layers = layers;
+
+    OXR(xrEndFrame(appState.Session, &endFrameInfo));
 }

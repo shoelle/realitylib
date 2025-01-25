@@ -33,5 +33,15 @@ Authors   :
  * event loop for receiving input events and doing other things.
  */
 void android_main(struct android_app* app) {
-    InitVR(app);
+    InitApp(app);
+    while(!AppShouldClose(app)){
+        BeginVRMode();
+        ClearBackgroundVR();
+        inLoop(app);
+        DrawCylinderVR((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f);
+        DrawQuadLayer((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){
+                -2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+        EndVRMode();
+    }
+    CloseApp(app);
 }

@@ -951,11 +951,14 @@ typedef bool (*SaveFileTextCallback)(const char *fileName, char *text); // FileI
 #if defined(__cplusplus)
 extern "C" {            // Prevents name mangling of functions
 #endif
-
+   //REPLACE ME
+    RLAPI void inLoop(struct android_app* app);
 // Window-related functions
 RLAPI void InitWindow(int width, int height, const char *title);  // Initialize window and OpenGL context
-RLAPI void InitVR(struct android_app* app); // Currently just prints to console, but will initialize OpenXR stuff down the road if we can fix this bug
+RLAPI void InitApp(struct android_app* app); // Currently just prints to console, but will initialize OpenXR stuff down the road if we can fix this bug
 RLAPI void CloseWindow(void);                                     // Close window and unload OpenGL context
+RLAPI void CloseApp(struct android_app* app);
+RLAPI bool AppShouldClose(struct android_app* app);
 RLAPI bool WindowShouldClose(void);                               // Check if application should close (KEY_ESCAPE pressed or windows close icon clicked)
 RLAPI bool IsWindowReady(void);                                   // Check if window has been initialized successfully
 RLAPI bool IsWindowFullscreen(void);                              // Check if window is currently fullscreen
@@ -1013,6 +1016,7 @@ RLAPI bool IsCursorOnScreen(void);                                // Check if cu
 
 // Drawing-related functions
 RLAPI void ClearBackground(Color color);                          // Set background color (framebuffer clear color)
+RLAPI void ClearBackgroundVR(void);
 RLAPI void BeginDrawing(void);                                    // Setup canvas (framebuffer) to start drawing
 RLAPI void EndDrawing(void);                                      // End canvas drawing and swap buffers (double buffering)
 RLAPI void BeginMode2D(Camera2D camera);                          // Begin 2D mode with custom camera (2D)
@@ -1029,6 +1033,8 @@ RLAPI void BeginScissorMode(int x, int y, int width, int height); // Begin sciss
 RLAPI void EndScissorMode(void);                                  // End scissor mode
 RLAPI void BeginVrStereoMode(VrStereoConfig config);              // Begin stereo rendering (requires VR simulator)
 RLAPI void EndVrStereoMode(void);                                 // End stereo rendering (requires VR simulator)
+RLAPI void BeginVRMode(void);
+RLAPI void EndVRMode(void);
 
 // VR stereo config functions for VR simulator
 RLAPI VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device);     // Load VR stereo config for VR simulator device parameters
@@ -1239,6 +1245,7 @@ RLAPI void DrawEllipse(int centerX, int centerY, float radiusH, float radiusV, C
 RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiusV, Color color);        // Draw ellipse outline
 RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
 RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
+RLAPI void DrawQuadLayer(Vector3 axis, Vector3 pos, float width, float height);
 RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
 RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle
@@ -1496,6 +1503,7 @@ RLAPI void DrawCubeWiresV(Vector3 position, Vector3 size, Color color);         
 RLAPI void DrawSphere(Vector3 centerPos, float radius, Color color);                                     // Draw sphere
 RLAPI void DrawSphereEx(Vector3 centerPos, float radius, int rings, int slices, Color color);            // Draw sphere with extended parameters
 RLAPI void DrawSphereWires(Vector3 centerPos, float radius, int rings, int slices, Color color);         // Draw sphere wires
+RLAPI void DrawCylinderVR(Vector3 axis, Vector3 pos, float radius, float aspectRatio);
 RLAPI void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone
 RLAPI void DrawCylinderEx(Vector3 startPos, Vector3 endPos, float startRadius, float endRadius, int sides, Color color); // Draw a cylinder with base at startPos and top at endPos
 RLAPI void DrawCylinderWires(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color); // Draw a cylinder/cone wires
