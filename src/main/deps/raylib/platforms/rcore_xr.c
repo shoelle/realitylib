@@ -5,6 +5,10 @@
 #include "xr_support.h"
 //#include "../raylib.h"
 
+bool vrInitialized = false;
+
+
+
 bool AppShouldClose(struct android_app* app){
     return app->destroyRequested != 0;
 }
@@ -521,7 +525,7 @@ XrAction moveOnJoystickAction;
 XrAction thumbstickClickAction;
 
 
-void InitVR(struct android_app* app) {
+void InitApp(struct android_app* app) {
     ALOGV("----------------------------------------------------------------");
     ALOGV("android_app_entry()");
     ALOGV("    android_main()");
@@ -1088,6 +1092,14 @@ ovrSceneMatrices sceneMatrices;
 XrCompositionLayerProjectionView projection_layer_elements[2];
 XrPosef viewTransform[2];
 
+void DrawVRCubemap();
+
+void DrawVREquirect();
+
+void DrawVRWorld();
+
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView);
+
 void BeginVRMode(void){
     XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
@@ -1147,160 +1159,164 @@ void BeginVRMode(void){
     shouldRenderWorldLayer = true;
     hasCubeMapBackground = appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE;
 }
+//helper for DrawVRBackground
+void DrawVREquirect() {
+    XrCompositionLayerEquirect2KHR equirect = {XR_TYPE_COMPOSITION_LAYER_EQUIRECT2_KHR};
+    equirect.layerFlags = 0;
+    equirect.space = appState.CurrentSpace;
+    equirect.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
 
-void ClearBackgroundVR(void){
-    // Add a background Layer
+    memset(&equirect.subImage, 0, sizeof(XrSwapchainSubImage));
+    equirect.subImage.swapchain = appState.Scene.EquirectSwapChain.Handle;
+    equirect.subImage.imageRect.extent.width = appState.Scene.EquirectSwapChain.Width;
+    equirect.subImage.imageRect.extent.height = appState.Scene.EquirectSwapChain.Height;
+
+    XrPosef_CreateIdentity(&equirect.pose);
+    equirect.radius = 10.0f;
+    equirect.centralHorizontalAngle = (2.0f * MATH_PI) / 3.0f;    // 120 degrees horizontal
+    equirect.upperVerticalAngle = (MATH_PI / 2.0f) * (2.0f / 3.0f); // 60 degrees up
+    equirect.lowerVerticalAngle = 0.0f;                             // 0 degrees down (equator)
+
+    appState.Layers[appState.LayerCount++].Equirect2 = equirect;
+}
+//helper for DrawVRBackground
+void DrawVRCubemap() {
+    XrCompositionLayerCubeKHR cube_layer = {XR_TYPE_COMPOSITION_LAYER_CUBE_KHR};
+    cube_layer.layerFlags = 0;
+    cube_layer.space = appState.CurrentSpace;
+    cube_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
+    cube_layer.swapchain = appState.Scene.CubeMapSwapChain.Handle;
+    XrQuaternionf_CreateIdentity(&cube_layer.orientation);
+
+    appState.Layers[appState.LayerCount++].Cube = cube_layer;
+
+}
+
+//helper for DrawVRBackground
+void DrawVRWorld() {
+    ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
+
+    XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
+    projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
+                                  XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
+    projection_layer.space = appState.CurrentSpace;
+    projection_layer.viewCount = ovrMaxNumEyes;
+    projection_layer.views = projection_layer_elements;
+
+    for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
+        SetupProjectionLayerForEye(eye, &projection_layer_elements[eye]);
+    }
+
+    appState.Layers[appState.LayerCount++].Projection = projection_layer;
+}
+//helper for DrawVRWorld
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView* layer) {
+    ovrFramebuffer* frameBuffer = &appState.Renderer.FrameBuffer[eye];
+
+    memset(layer, 0, sizeof(XrCompositionLayerProjectionView));
+    layer->type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
+
+    XrPosef_Invert(&layer->pose, &viewTransform[eye]);
+    layer->fov = projections[eye].fov;
+
+    memset(&layer->subImage, 0, sizeof(XrSwapchainSubImage));
+    layer->subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
+    layer->subImage.imageRect.extent.width = frameBuffer->ColorSwapChain.Width;
+    layer->subImage.imageRect.extent.height = frameBuffer->ColorSwapChain.Height;
+}
+
+
+//reorganized and renamed from ClearBackgroundVR()
+void DrawVRBackground(void) {
+    shouldRenderWorldLayer = true;
+
     if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
-        hasCubeMapBackground /* data loaded from sdcard */) {
-        XrCompositionLayerCubeKHR cube_layer = {XR_TYPE_COMPOSITION_LAYER_CUBE_KHR};
-        cube_layer.layerFlags = 0;
-        cube_layer.space = appState.CurrentSpace;
-        cube_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-        cube_layer.swapchain = appState.Scene.CubeMapSwapChain.Handle;
-        XrQuaternionf_CreateIdentity(&cube_layer.orientation);
-
-        appState.Layers[appState.LayerCount++].Cube = cube_layer;
+        appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE) {
+        DrawVRCubemap();
         shouldRenderWorldLayer = false;
-    } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
-        XrCompositionLayerEquirect2KHR equirect_layer = {
-                XR_TYPE_COMPOSITION_LAYER_EQUIRECT2_KHR};
-        equirect_layer.layerFlags = 0;
-        equirect_layer.space = appState.CurrentSpace;
-        equirect_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-        memset(&equirect_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-        equirect_layer.subImage.swapchain = appState.Scene.EquirectSwapChain.Handle;
-        equirect_layer.subImage.imageRect.offset.x = 0;
-        equirect_layer.subImage.imageRect.offset.y = 0;
-        equirect_layer.subImage.imageRect.extent.width = appState.Scene.EquirectSwapChain.Width;
-        equirect_layer.subImage.imageRect.extent.height =
-                appState.Scene.EquirectSwapChain.Height;
-        equirect_layer.subImage.imageArrayIndex = 0;
-        XrPosef_CreateIdentity(&equirect_layer.pose);
-        equirect_layer.radius = 10.0f;
-        const float centralHorizontalAngle = (2.0f * MATH_PI) / 3.0f;
-        const float upperVerticalAngle =
-                (MATH_PI / 2.0f) * (2.0f / 3.0f); // 60 degrees north latitude
-        const float lowerVerticalAngle = 0.0f; // equator
-        equirect_layer.centralHorizontalAngle = centralHorizontalAngle;
-        equirect_layer.upperVerticalAngle = upperVerticalAngle;
-        equirect_layer.lowerVerticalAngle = lowerVerticalAngle;
-
-        appState.Layers[appState.LayerCount++].Equirect2 = equirect_layer;
+    }
+    else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
+        DrawVREquirect();
     }
 
-    // Render the world-view layer (simple ground plane)
     if (shouldRenderWorldLayer) {
-        ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
-
-        XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
-        projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        projection_layer.layerFlags |= XR_COMPOSITION_LAYER_CORRECT_CHROMATIC_ABERRATION_BIT;
-        projection_layer.space = appState.CurrentSpace;
-        projection_layer.viewCount = ovrMaxNumEyes;
-        projection_layer.views = projection_layer_elements;
-
-        for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-            ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
-
-            memset(
-                    &projection_layer_elements[eye], 0,
-                    sizeof(XrCompositionLayerProjectionView));
-            projection_layer_elements[eye].type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW;
-
-            XrPosef_Invert(&projection_layer_elements[eye].pose, &viewTransform[eye]);
-            projection_layer_elements[eye].fov = projections[eye].fov;
-
-            memset(&projection_layer_elements[eye].subImage, 0, sizeof(XrSwapchainSubImage));
-            projection_layer_elements[eye].subImage.swapchain =
-                    frameBuffer->ColorSwapChain.Handle;
-            projection_layer_elements[eye].subImage.imageRect.offset.x = 0;
-            projection_layer_elements[eye].subImage.imageRect.offset.y = 0;
-            projection_layer_elements[eye].subImage.imageRect.extent.width =
-                    frameBuffer->ColorSwapChain.Width;
-            projection_layer_elements[eye].subImage.imageRect.extent.height =
-                    frameBuffer->ColorSwapChain.Height;
-            projection_layer_elements[eye].subImage.imageArrayIndex = 0;
-        }
-
-        appState.Layers[appState.LayerCount++].Projection = projection_layer;
+        DrawVRWorld();
     }
 }
 
-void DrawCylinderVR(Vector3 axis, Vector3 pos, float radius, float aspectRatio){
-    // Build the cylinder layer
-    {
-        XrCompositionLayerCylinderKHR cylinder_layer = {XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
-        cylinder_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        cylinder_layer.space = appState.LocalSpace;
-        cylinder_layer.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-        memset(&cylinder_layer.subImage, 0, sizeof(XrSwapchainSubImage));
-        cylinder_layer.subImage.swapchain = appState.Scene.CylinderSwapChain.Handle;
-        cylinder_layer.subImage.imageRect.offset.x = 0;
-        cylinder_layer.subImage.imageRect.offset.y = 0;
-        cylinder_layer.subImage.imageRect.extent.width = appState.Scene.CylinderSwapChain.Width;
-        cylinder_layer.subImage.imageRect.extent.height =
-                appState.Scene.CylinderSwapChain.Height;
-        cylinder_layer.subImage.imageArrayIndex = 0;
-        const XrVector3f axis1 = {axis.x, axis.y, axis.z};
-        const XrVector3f pos1 = {pos.x, pos.y, pos.z};
-        XrQuaternionf_CreateFromAxisAngle(&cylinder_layer.pose.orientation, &axis1,
-                                          -45.0f * MATH_PI / 180.0f);
-        cylinder_layer.pose.position = pos1;
-        cylinder_layer.radius = radius;
 
-        cylinder_layer.centralAngle = MATH_PI / 4.0;
-        cylinder_layer.aspectRatio = aspectRatio;
+void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float aspectRatio) {
+    XrCompositionLayerCylinderKHR cylinder = {XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
+    cylinder.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    cylinder.space = appState.LocalSpace;
+    cylinder.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
 
-        appState.Layers[appState.LayerCount++].Cylinder = cylinder_layer;
-    }
+    //setup swapchain
+    memset(&cylinder.subImage, 0, sizeof(XrSwapchainSubImage));
+    cylinder.subImage.swapchain = appState.Scene.CylinderSwapChain.Handle;
+    cylinder.subImage.imageRect.extent.width = appState.Scene.CylinderSwapChain.Width;
+    cylinder.subImage.imageRect.extent.height = appState.Scene.CylinderSwapChain.Height;
+
+    //convert position and axis to XR format
+    XrVector3f xrPosition = {position.x, position.y, position.z};
+    XrVector3f xrAxis = {axis.x, axis.y, axis.z};
+
+    //setup cylinder dimensions
+    cylinder.radius = radius;
+    cylinder.centralAngle = MATH_PI / 4.0;
+    cylinder.aspectRatio = aspectRatio;
+
+    //setup position and orientation
+    cylinder.pose.position = xrPosition;
+    XrQuaternionf_CreateFromAxisAngle(&cylinder.pose.orientation, &xrAxis, -45.0f * MATH_PI / 180.0f);
+
+    appState.Layers[appState.LayerCount++].Cylinder = cylinder;
 }
 
-void DrawQuadLayer(Vector3 axis, Vector3 pos, float width, float height){
-    // Build the quad layer
-    {
-        const XrVector3f axis1 = {axis.x, axis.y, axis.z};
-        XrVector3f pos1 = {
-                pos.x, pos.y, pos.z};
-        XrExtent2Df size1 = {width, height};
+//helper for DrawVRQuad
+XrCompositionLayerQuad CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height) {
+    XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
+    quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    quad.space = appState.CurrentSpace;
+    quad.eyeVisibility = eye;
+    memset(&quad.subImage, 0, sizeof(XrSwapchainSubImage));
+    quad.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
+    quad.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
+    quad.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
 
-        XrCompositionLayerQuad quad_layer_left = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-        quad_layer_left.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        quad_layer_left.space = appState.CurrentSpace;
-        quad_layer_left.eyeVisibility = XR_EYE_VISIBILITY_LEFT;
-        memset(&quad_layer_left.subImage, 0, sizeof(XrSwapchainSubImage));
-        quad_layer_left.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
-        quad_layer_left.subImage.imageRect.offset.x = 0;
-        quad_layer_left.subImage.imageRect.offset.y = 0;
-        quad_layer_left.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
-        quad_layer_left.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
-        quad_layer_left.subImage.imageArrayIndex = 0;
-        XrPosef_CreateIdentity(&quad_layer_left.pose);
-        XrQuaternionf_CreateFromAxisAngle(&quad_layer_left.pose.orientation, &axis,
-                                          45.0f * MATH_PI / 180.0f);
-        quad_layer_left.pose.position = pos1;
-        quad_layer_left.size = size1;
+    //convert position and axis to XR format
+    XrVector3f xrPosition = {position.x, position.y, position.z};
+    XrVector3f xrAxis = {axis.x, axis.y, axis.z};
 
-        appState.Layers[appState.LayerCount++].Quad = quad_layer_left;
+    //setup position, orientation and size
+    XrPosef_CreateIdentity(&quad.pose);
+    XrQuaternionf_CreateFromAxisAngle(&quad.pose.orientation, &xrAxis, 45.0f * MATH_PI / 180.0f);
+    quad.pose.position = xrPosition;
+    quad.size = (XrExtent2Df){width, height};
 
-        XrCompositionLayerQuad quad_layer_right = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-        quad_layer_right.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-        quad_layer_right.space = appState.CurrentSpace;
-        quad_layer_right.eyeVisibility = XR_EYE_VISIBILITY_RIGHT;
-        memset(&quad_layer_right.subImage, 0, sizeof(XrSwapchainSubImage));
-        quad_layer_right.subImage.swapchain = appState.Scene.QuadSwapChain.Handle;
-        quad_layer_right.subImage.imageRect.offset.x = 0;
-        quad_layer_right.subImage.imageRect.offset.y = 0;
-        quad_layer_right.subImage.imageRect.extent.width = appState.Scene.QuadSwapChain.Width;
-        quad_layer_right.subImage.imageRect.extent.height = appState.Scene.QuadSwapChain.Height;
-        quad_layer_right.subImage.imageArrayIndex = 0;
-        XrPosef_CreateIdentity(&quad_layer_right.pose);
-        XrQuaternionf_CreateFromAxisAngle(&quad_layer_right.pose.orientation, &axis,
-                                          45.0f * MATH_PI / 180.0f);
-        quad_layer_right.pose.position = pos1;
-        quad_layer_right.size = size1;
+    return quad;
+}
 
-        appState.Layers[appState.LayerCount++].Quad = quad_layer_right;
-    }
+void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
+    //drawing left eye quad
+    XrCompositionLayerQuad leftQuad = CreateQuadLayer(
+            XR_EYE_VISIBILITY_LEFT,
+            position,
+            axis,
+            width,
+            height
+    );
+    appState.Layers[appState.LayerCount++].Quad = leftQuad;
+
+    //drawing the right eye quad
+    XrCompositionLayerQuad rightQuad = CreateQuadLayer(
+            XR_EYE_VISIBILITY_RIGHT,
+            position,
+            axis,
+            width,
+            height
+    );
+    appState.Layers[appState.LayerCount++].Quad = rightQuad;
 }
 
 void EndVRMode(void){

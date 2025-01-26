@@ -36,11 +36,10 @@ void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
-        ClearBackgroundVR();
         inLoop(app);
-        DrawCylinderVR((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f);
-        DrawQuadLayer((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){
-                -2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+        DrawVRBackground(); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
+        DrawVRCylinder((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
+        DrawVRQuad((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
         EndVRMode();
     }
     CloseApp(app);
