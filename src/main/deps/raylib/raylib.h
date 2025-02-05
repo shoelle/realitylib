@@ -1200,6 +1200,17 @@ RLAPI Vector2 GetTouchPosition(int index);                    // Get touch posit
 RLAPI int GetTouchPointId(int index);                         // Get touch point identifier for given index
 RLAPI int GetTouchPointCount(void);                           // Get number of touch points
 
+// Input-related functions: VR
+RLAPI int InitVRController();
+RLAPI bool IsVRButtonPressed(int button);
+RLAPI bool IsVRButtonDown(int button);
+RLAPI bool IsVRButtonReleased(int button);
+RLAPI bool IsVRButtonUp(int button);
+
+RLAPI float GetThumbstickAxisMovement(int axis);
+RLAPI void applyHapticRight();
+RLAPI void syncControllers();
+RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, float duration);
 //------------------------------------------------------------------------------------
 // Gestures and Touch Handling Functions (Module: rgestures)
 //------------------------------------------------------------------------------------
