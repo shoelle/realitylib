@@ -1016,7 +1016,7 @@ RLAPI bool IsCursorOnScreen(void);                                // Check if cu
 
 // Drawing-related functions
 RLAPI void ClearBackground(Color color);                          // Set background color (framebuffer clear color)
-RLAPI void DrawVRBackground(void);
+RLAPI void DrawVRBackground(int xOffset, int yOffset);
 RLAPI void BeginDrawing(void);                                    // Setup canvas (framebuffer) to start drawing
 RLAPI void EndDrawing(void);                                      // End canvas drawing and swap buffers (double buffering)
 RLAPI void BeginMode2D(Camera2D camera);                          // Begin 2D mode with custom camera (2D)
@@ -1207,10 +1207,10 @@ RLAPI bool IsVRButtonDown(int button);
 RLAPI bool IsVRButtonReleased(int button);
 RLAPI bool IsVRButtonUp(int button);
 
-RLAPI float GetThumbstickAxisMovement(int axis);
-RLAPI void applyHapticRight();
+RLAPI Vector2 GetThumbstickAxisMovement(int controller, int axis);
+RLAPI void ApplyHapticRight();
 RLAPI void syncControllers();
-RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, float duration);
+RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, long duration);
 //------------------------------------------------------------------------------------
 // Gestures and Touch Handling Functions (Module: rgestures)
 //------------------------------------------------------------------------------------

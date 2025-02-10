@@ -963,8 +963,6 @@ void syncControllers() {
     getInfo.subactionPath = XR_NULL_PATH;
 }
 
-//TODO move this elsewhere
-
 bool IsVRButtonPressed(int button) {
     XrActionStateBoolean vibrateRightState = GetActionStateBoolean(bindings[button].action);
     return vibrateRightState.changedSinceLastSync & vibrateRightState.currentState;
@@ -984,19 +982,23 @@ bool IsVRButtonUp(int button) {
 //    XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
     return !GetActionStateBoolean(bindings[button].action).currentState;
 }
-
-void applyHapticRight() {
-    ALOGV("Firing Haptics on R ... ");
-    // fire haptics using output action
+void setVRControllerVibration(int controller, float frequency, float amplitude, long duration) {
+    controller == 0 ? ALOGV("Firing Haptics on L ... ") : ALOGV("Firing Haptics on R ... ");
     XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
-    vibration.amplitude = 0.5;
-    vibration.duration = XR_MIN_HAPTIC_DURATION;
-    vibration.frequency = 3000;
+    vibration.amplitude = amplitude;
+    vibration.duration = duration;
+    vibration.frequency = frequency;
     XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-    hapticActionInfo.action = vibrateRightFeedback;
+    hapticActionInfo.action = controller == 0 ? vibrateLeftFeedback : vibrateRightFeedback;
     OXR(xrApplyHapticFeedback(
             appState.Session, &hapticActionInfo,
             (const XrHapticBaseHeader *) &vibration));
+}
+
+Vector2 GetThumbstickAxisMovement(int controller, int axis) {
+    XrActionStateVector2f joystickState = GetActionStateVector2(moveOnJoystickAction);
+    struct Vector2 vec = {joystickState.currentState.x, joystickState.currentState.y};
+    return vec;
 }
 
 void inLoop(struct android_app *app) {
@@ -1130,9 +1132,9 @@ void DrawVRCubemap();
 
 void DrawVREquirect();
 
-void DrawVRWorld();
+void DrawVRWorld(int xOffset, int yOffset);
 
-void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView);
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView, int xOffset, int yOffset);
 
 void BeginVRMode(void) {
     XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
@@ -1231,7 +1233,7 @@ void DrawVRCubemap() {
 }
 
 //helper for DrawVRBackground
-void DrawVRWorld() {
+void DrawVRWorld(int xOffset, int yOffset) {
     ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
 
     XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
@@ -1242,14 +1244,14 @@ void DrawVRWorld() {
     projection_layer.views = projection_layer_elements;
 
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
-        SetupProjectionLayerForEye(eye, &projection_layer_elements[eye]);
+        SetupProjectionLayerForEye(eye, &projection_layer_elements[eye], xOffset, yOffset);
     }
 
     appState.Layers[appState.LayerCount++].Projection = projection_layer;
 }
 
 //helper for DrawVRWorld
-void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer) {
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer, int xOffset, int yOffset) {
     ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
 
     memset(layer, 0, sizeof(XrCompositionLayerProjectionView));
@@ -1262,11 +1264,13 @@ void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer
     layer->subImage.swapchain = frameBuffer->ColorSwapChain.Handle;
     layer->subImage.imageRect.extent.width = frameBuffer->ColorSwapChain.Width;
     layer->subImage.imageRect.extent.height = frameBuffer->ColorSwapChain.Height;
+//    layer->subImage.imageRect.offset.x = xOffset;
+//    layer->subImage.imageRect.offset.y = yOffset;
 }
 
 
 //reorganized and renamed from ClearBackgroundVR()
-void DrawVRBackground(void) {
+void DrawVRBackground(int xOffset, int yOffset) {
     shouldRenderWorldLayer = true;
 
     if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
@@ -1278,7 +1282,7 @@ void DrawVRBackground(void) {
     }
 
     if (shouldRenderWorldLayer) {
-        DrawVRWorld();
+        DrawVRWorld(xOffset, yOffset);
     }
 }
 

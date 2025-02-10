@@ -32,18 +32,25 @@ Authors   :
  * android_native_app_glue.  It runs in its own thread, with its own
  * event loop for receiving input events and doing other things.
  */
+float speed = 0.1f;
+Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
         syncControllers();
         inLoop(app);
-        if (IsVRButtonPressed(7)) {
-            applyHapticRight();
+        if (IsVRButtonPressed(1)) {
+            setVRControllerVibration(1, 3000, 0.5, -1);
         }
-        DrawVRBackground(); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
-        DrawVRCylinder((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
-        DrawVRQuad((Vector3){0.0f, 1.0f, 0.0f}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+        DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
+        DrawVRCylinder((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
+        if (IsVRButtonDown(1)) {
+            DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+        }
+        struct Vector2 rJoystickVec = GetThumbstickAxisMovement(0,0);
+        selfLoc = (Vector3) {selfLoc.x + rJoystickVec.x * speed, selfLoc.y, selfLoc.z - rJoystickVec.y * speed};
+
         EndVRMode();
     }
     CloseApp(app);
