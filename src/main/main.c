@@ -34,13 +34,13 @@ Authors   :
  */
 Vector3 advance(Vector3 selfLoc, Vector2 joystickVec, float speed) {
     Vector3 out = {selfLoc.x + joystickVec.x * speed, selfLoc.y, selfLoc.z - joystickVec.y * speed};
-    if(out.x >= 0) {
-        out.x = 0;
-    } else if(out.x <= -20) {
-        out.x = -20;
+    if(out.x >= 19) {
+        out.x = 19;
+    } else if(out.x <= -17) {
+        out.x = -17;
     }
-    if(out.z >= 0) {
-        out.z = 0;
+    if(out.z >= 19) {
+        out.z = 19;
     } else if(out.z <= -99) {
         out.z = -99
                 ;
