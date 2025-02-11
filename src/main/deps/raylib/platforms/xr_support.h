@@ -109,7 +109,7 @@ typedef union {
     XrCompositionLayerEquirect2KHR Equirect2;
 } ovrCompositorLayer_Union;
 
-enum { ovrMaxLayerCount = 16 };
+enum { ovrMaxLayerCount = 32 };
 enum { ovrMaxNumEyes = 2 };
 
 // Forward declarations

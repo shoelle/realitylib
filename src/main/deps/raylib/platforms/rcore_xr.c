@@ -663,7 +663,6 @@ int InitVRController() {
     // Map bindings
     int currBinding = 0;
 
-
     if (interactionProfilePath == interactionProfilePathTouch) {
         bindings[currBinding++] =
                 ActionSuggestedBinding(toggleAction, "/user/hand/left/input/trigger");
@@ -1318,7 +1317,7 @@ void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float aspectRa
 
 //helper for DrawVRQuad
 XrCompositionLayerQuad
-CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height) {
+CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height, float angle) {
     XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
     quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
     quad.space = appState.CurrentSpace;
@@ -1334,33 +1333,35 @@ CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width
 
     //setup position, orientation and size
     XrPosef_CreateIdentity(&quad.pose);
-    XrQuaternionf_CreateFromAxisAngle(&quad.pose.orientation, &xrAxis, 45.0f * MATH_PI / 180.0f);
+    XrQuaternionf_CreateFromAxisAngle(&quad.pose.orientation, &xrAxis, angle * MATH_PI / 180.0f);
     quad.pose.position = xrPosition;
     quad.size = (XrExtent2Df) {width, height};
 
     return quad;
 }
 
-void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
+void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height, float angle) {
     //drawing left eye quad
-    XrCompositionLayerQuad leftQuad = CreateQuadLayer(
-            XR_EYE_VISIBILITY_LEFT,
+    XrCompositionLayerQuad quad = CreateQuadLayer(
+            XR_EYE_VISIBILITY_BOTH,
             position,
             axis,
             width,
-            height
+            height,
+            angle
     );
-    appState.Layers[appState.LayerCount++].Quad = leftQuad;
+    appState.Layers[appState.LayerCount++].Quad = quad;
 
     //drawing the right eye quad
-    XrCompositionLayerQuad rightQuad = CreateQuadLayer(
-            XR_EYE_VISIBILITY_RIGHT,
-            position,
-            axis,
-            width,
-            height
-    );
-    appState.Layers[appState.LayerCount++].Quad = rightQuad;
+//    XrCompositionLayerQuad rightQuad = CreateQuadLayer(
+//            XR_EYE_VISIBILITY_RIGHT,
+//            position,
+//            axis,
+//            width,
+//            height,
+//            angle
+//    );
+//    appState.Layers[appState.LayerCount++].Quad = rightQuad;
 }
 
 void EndVRMode(void) {
