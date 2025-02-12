@@ -313,6 +313,14 @@ typedef struct Font {
     GlyphInfo *glyphs;      // Glyphs info data
 } Font;
 
+// Camera, defines position/orientation in VR space
+typedef struct CameraXr {
+    Vector3 position;
+    XrQuaternionf orientation;
+} CameraXr;
+
+typedef CameraXr CameraXr;    // Camera type fallback, defaults to Camera3D
+
 // Camera, defines position/orientation in 3d space
 typedef struct Camera3D {
     Vector3 position;       // Camera position
@@ -1033,7 +1041,7 @@ RLAPI void BeginScissorMode(int x, int y, int width, int height); // Begin sciss
 RLAPI void EndScissorMode(void);                                  // End scissor mode
 RLAPI void BeginVrStereoMode(VrStereoConfig config);              // Begin stereo rendering (requires VR simulator)
 RLAPI void EndVrStereoMode(void);                                 // End stereo rendering (requires VR simulator)
-RLAPI void BeginVRMode(void);
+RLAPI void BeginVRMode(CameraXr camera);
 RLAPI void EndVRMode(void);
 
 // VR stereo config functions for VR simulator
@@ -1206,6 +1214,7 @@ RLAPI bool IsVRButtonPressed(int button);
 RLAPI bool IsVRButtonDown(int button);
 RLAPI bool IsVRButtonReleased(int button);
 RLAPI bool IsVRButtonUp(int button);
+RLAPI float GetVRInputFloat(int input);
 
 RLAPI Vector2 GetThumbstickAxisMovement(int controller, int axis);
 RLAPI void ApplyHapticRight();
@@ -1228,6 +1237,7 @@ RLAPI float GetGesturePinchAngle(void);                 // Get gesture pinch ang
 //------------------------------------------------------------------------------------
 RLAPI void UpdateCamera(Camera *camera, int mode);      // Update camera position for selected mode
 RLAPI void UpdateCameraPro(Camera *camera, Vector3 movement, Vector3 rotation, float zoom); // Update camera movement/rotation
+RLAPI void TurnCameraXr(XrVector3f axis, float angle); // Update camera movement/rotation
 
 //------------------------------------------------------------------------------------
 // Basic Shapes Drawing Functions (Module: shapes)

@@ -32,8 +32,8 @@ Authors   :
  * android_native_app_glue.  It runs in its own thread, with its own
  * event loop for receiving input events and doing other things.
  */
-Vector3 advance(Vector3 selfLoc, Vector2 joystickVec, float speed) {
-    Vector3 out = {selfLoc.x + joystickVec.x * speed, selfLoc.y, selfLoc.z - joystickVec.y * speed};
+Vector3 advance(Vector3 cameraPos, Vector2 joystickVec, float speed) {
+    Vector3 out = {cameraPos.x + joystickVec.x * speed, cameraPos.y, cameraPos.z - joystickVec.y * speed};
     if(out.x >= 19) {
         out.x = 19;
     } else if(out.x <= -17) {
@@ -42,64 +42,72 @@ Vector3 advance(Vector3 selfLoc, Vector2 joystickVec, float speed) {
     if(out.z >= 19) {
         out.z = 19;
     } else if(out.z <= -99) {
-        out.z = -99
-                ;
+        out.z = -99;
     }
     return out;
 }
 
 float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 float dir = 0.0f;
 void android_main(struct android_app* app) {
+    CameraXr camera;
+
     InitApp(app);
     while(!AppShouldClose(app)){
-        BeginVRMode();
+        BeginVRMode(camera);
         syncControllers();
         inLoop(app);
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
         }
-//        DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
-//        DrawVRCylinder((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
+//        DrawVRBackground(camera.position.x, camera.position.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
+//        DrawVRCylinder((Vector3){0.0f - camera.position.x, 1.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
 //        if (IsVRButtonDown(1)) {
-//            DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+//            DrawVRQuad((Vector3){0.0f - camera.position.x, 1.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
 //        }
         struct Vector2 rJoystickVec = GetThumbstickAxisMovement(0,0);
-        selfLoc = advance(selfLoc, rJoystickVec, speed);
+//        if(rJoystickVec.x <= -0.5) {
+//            dir -= 1;
+//        } else if(rJoystickVec.x >= 0.5) {
+//            dir += 1;
+//        }
+//        TurnCameraXr((XrVector3f){0.0f,1.0f,0.0f}, dir);
+        camera.position = advance(camera.position, rJoystickVec, speed);
 
-//        DrawVRQuad((Vector3){40.0f - selfLoc.x, 0.0f - selfLoc.y, -100.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
-//        DrawVRQuad((Vector3){40.0f - selfLoc.x, 0.0f - selfLoc.y, -60.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // back
-//        DrawVRQuad((Vector3){20.0f - selfLoc.x, 0.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
-//        DrawVRQuad((Vector3){60.0f - selfLoc.x, 0.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
-//        DrawVRQuad((Vector3){40.0f - selfLoc.x, 20.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
-//        DrawVRQuad((Vector3){40.0f - selfLoc.x, -20.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
+//        DrawVRQuad((Vector3){40.0f - camera.position.x, 0.0f - camera.position.y, -100.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
+//        DrawVRQuad((Vector3){40.0f - camera.position.x, 0.0f - camera.position.y, -60.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // back
+//        DrawVRQuad((Vector3){20.0f - camera.position.x, 0.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
+//        DrawVRQuad((Vector3){60.0f - camera.position.x, 0.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
+//        DrawVRQuad((Vector3){40.0f - camera.position.x, 20.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
+//        DrawVRQuad((Vector3){40.0f - camera.position.x, -20.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
 
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, 0.0f - selfLoc.y, -100.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
-        DrawVRQuad((Vector3){-20.0f - selfLoc.x, 0.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
-        if(!IsVRButtonDown(3)) {
-            DrawVRQuad((Vector3){20.0f - selfLoc.x, 0.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
+        DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, -100.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
+        DrawVRQuad((Vector3){-20.0f - camera.position.x, 0.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
+//        if(!IsVRButtonDown(3)) {
+            DrawVRQuad((Vector3){20.0f - camera.position.x, 0.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
+//        }
+        DrawVRQuad((Vector3){0.0f - camera.position.x, 20.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
+//        DrawVRQuad((Vector3){0.0f - camera.position.x, -20.0f - camera.position.y, -80.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
+
+        DrawVRQuad((Vector3){-20.0f - camera.position.x, 0.0f - camera.position.y, -40.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
+        DrawVRQuad((Vector3){20.0f - camera.position.x, 0.0f - camera.position.y, -40.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
+//        DrawVRQuad((Vector3){0.0f - camera.position.x, -20.0f - camera.position.y, -40.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
+        DrawVRQuad((Vector3){0.0f - camera.position.x, 20.0f - camera.position.y, -40.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
+
+        DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, 20.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // back
+        DrawVRQuad((Vector3){-20.0f - camera.position.x, 0.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
+        DrawVRQuad((Vector3){20.0f - camera.position.x, 0.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
+//        DrawVRQuad((Vector3){0.0f - camera.position.x, -20.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
+        DrawVRQuad((Vector3){0.0f - camera.position.x, 20.0f - camera.position.y, 0.0f - camera.position.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
+
+        if (GetVRInputFloat(6) < 0.5) {
+            DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, -20.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
+            DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, -20.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // front
         }
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, 20.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, -20.0f - selfLoc.y, -80.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
-
-        if (!IsVRButtonDown(1)) {
-            DrawVRQuad((Vector3){0.0f - selfLoc.x, 0.0f - selfLoc.y, -60.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
+        if (GetVRInputFloat(5) < 0.5 && ((camera.position.z <= -20.0f) || (GetVRInputFloat(6) >= 0.5))) {
+            DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, -60.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // front
+            DrawVRQuad((Vector3){0.0f - camera.position.x, 0.0f - camera.position.y, -60.0f - camera.position.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
         }
-        DrawVRQuad((Vector3){-20.0f - selfLoc.x, 0.0f - selfLoc.y, -40.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
-        DrawVRQuad((Vector3){20.0f - selfLoc.x, 0.0f - selfLoc.y, -40.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, -20.0f - selfLoc.y, -40.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, 20.0f - selfLoc.y, -40.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
-
-        if (!IsVRButtonDown(1)) {
-            DrawVRQuad((Vector3){0.0f - selfLoc.x, 0.0f - selfLoc.y, -20.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 0.0f); // front
-        }
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, 0.0f - selfLoc.y, 20.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 180.0f); // back
-        DrawVRQuad((Vector3){-20.0f - selfLoc.x, 0.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // left
-        DrawVRQuad((Vector3){20.0f - selfLoc.x, 0.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 1.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // right
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, -20.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 270.0f); // bottom
-        DrawVRQuad((Vector3){0.0f - selfLoc.x, 20.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){1.0f, 0.0f, 0.0f}, 40.0f, 40.0f, 90.0f); // top
-
         EndVRMode();
     }
     CloseApp(app);

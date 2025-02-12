@@ -6,7 +6,7 @@
 //#include "../raylib.h"
 
 bool vrInitialized = false;
-
+CameraXr camera;
 
 bool AppShouldClose(struct android_app *app) {
     return app->destroyRequested != 0;
@@ -888,7 +888,6 @@ void InitApp(struct android_app *app) {
 
     bool stageBoundsDirty = true;
 
-
     // App-specific input
     float appQuadPositionX = 0.0f;
     float appQuadPositionY = 0.0f;
@@ -992,6 +991,10 @@ void setVRControllerVibration(int controller, float frequency, float amplitude, 
     OXR(xrApplyHapticFeedback(
             appState.Session, &hapticActionInfo,
             (const XrHapticBaseHeader *) &vibration));
+}
+
+float GetVRInputFloat(int input) {
+    return GetActionStateFloat(bindings[input].action).currentState;
 }
 
 Vector2 GetThumbstickAxisMovement(int controller, int axis) {
@@ -1135,7 +1138,7 @@ void DrawVRWorld(int xOffset, int yOffset);
 
 void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView, int xOffset, int yOffset);
 
-void BeginVRMode(void) {
+void BeginVRMode(CameraXr inCamera) {
     XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
     OXR(xrWaitFrame(appState.Session, &waitFrameInfo, &frameState));
@@ -1195,6 +1198,9 @@ void BeginVRMode(void) {
     memset(appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
     shouldRenderWorldLayer = true;
     hasCubeMapBackground = appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE;
+
+    camera.position = (Vector3) {0.0f, 0.0f, 0.0f};
+    XrQuaternionf_CreateFromAxisAngle(&camera.orientation,&(XrVector3f){1,0,0},0);
 }
 
 //helper for DrawVRBackground
@@ -1334,6 +1340,8 @@ CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width
     //setup position, orientation and size
     XrPosef_CreateIdentity(&quad.pose);
     XrQuaternionf_CreateFromAxisAngle(&quad.pose.orientation, &xrAxis, angle * MATH_PI / 180.0f);
+//    XrQuaternionf_Multiply(&quad.pose.orientation, &quad.pose.orientation, &camera.orientation);
+//    XrQuaternionf_Normalize(&quad.pose.orientation);
     quad.pose.position = xrPosition;
     quad.size = (XrExtent2Df) {width, height};
 
@@ -1362,6 +1370,12 @@ void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height, float
 //            angle
 //    );
 //    appState.Layers[appState.LayerCount++].Quad = rightQuad;
+}
+
+void TurnCameraXr(XrVector3f axis, float angle) {
+    XrQuaternionf turn;
+    XrQuaternionf_CreateFromAxisAngle(&turn, &axis, angle * MATH_PI / 180.0f);
+    XrQuaternionf_Multiply(&camera.orientation, &camera.orientation, &turn);
 }
 
 void EndVRMode(void) {
