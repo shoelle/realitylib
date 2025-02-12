@@ -509,6 +509,20 @@ float appQuadPositionX;
 float appQuadPositionY;
 float appCylPositionX;
 float appCylPositionY;
+XrAction LTrigger;
+XrAction RTrigger;
+XrAction XButton;
+XrAction YButton;
+XrAction AButton;
+XrAction BButton;
+XrAction LSqueeze;
+XrAction RSqueeze;
+XrAction LTriggerValue;
+XrAction RTriggerValue;
+XrAction LThumbstick;
+XrAction RThumbstick;
+XrAction LThumbstickClick;
+XrAction RThumbstickClick;
 XrAction vibrateLeftToggle;
 XrAction vibrateRightToggle;
 XrAction vibrateLeftFeedback;
@@ -537,13 +551,32 @@ void InitActionSet() {
             runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_x", "Move on X", 0, NULL);
     moveOnYAction = CreateAction(
             runningActionSet, XR_ACTION_TYPE_FLOAT_INPUT, "move_on_y", "Move on Y", 0, NULL);
-    moveOnJoystickAction = CreateAction(
-            runningActionSet, XR_ACTION_TYPE_VECTOR2F_INPUT, "move_on_joy", "Move on Joy", 0, NULL);
-    thumbstickClickAction = CreateAction(
+    LThumbstick = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_VECTOR2F_INPUT,
+            "move_on_left_joystick",
+            "Move on Left Joystick",
+            0,
+            NULL);
+    RThumbstick = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_VECTOR2F_INPUT,
+            "move_on_right_joystick",
+            "Move on Right Joystick",
+            0,
+            NULL);
+    LThumbstickClick = CreateAction(
             runningActionSet,
             XR_ACTION_TYPE_BOOLEAN_INPUT,
-            "thumbstick_click",
-            "Thumbstick Click",
+            "left_thumbstick_click",
+            "Left Thumbstick Click",
+            0,
+            NULL);
+    RThumbstickClick = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "right_thumbstick_click",
+            "Right Thumbstick Click",
             0,
             NULL);
 
@@ -576,6 +609,48 @@ void InitActionSet() {
             0,
             NULL);
 
+    LTrigger = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "left_trigger",
+            "Left Trigger",
+            0,
+            NULL);
+    RTrigger = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "right_trigger",
+            "Right Trigger",
+            0,
+            NULL);
+    XButton = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "x_button",
+            "X Button",
+            0,
+            NULL);
+    YButton = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "y_button",
+            "Y Button",
+            0,
+            NULL);
+    AButton = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "a_button",
+            "A Button",
+            0,
+            NULL);
+    BButton = CreateAction(
+            runningActionSet,
+            XR_ACTION_TYPE_BOOLEAN_INPUT,
+            "b_button",
+            "B Button",
+            0,
+            NULL);
     XrPath handSubactionPaths[2] = {leftHandPath, rightHandPath};
 
     aimPoseAction = CreateAction(
@@ -663,16 +738,17 @@ int InitVRController() {
     // Map bindings
     int currBinding = 0;
 
-
+    ALOGV("TEST MESSAGE\n");
     if (interactionProfilePath == interactionProfilePathTouch) {
+        ALOGV("USING TOUCH\n");
         bindings[currBinding++] =
-                ActionSuggestedBinding(toggleAction, "/user/hand/left/input/trigger");
+                ActionSuggestedBinding(LTrigger, "/user/hand/left/input/trigger");
         bindings[currBinding++] =
-                ActionSuggestedBinding(toggleAction, "/user/hand/right/input/trigger");
+                ActionSuggestedBinding(RTrigger, "/user/hand/right/input/trigger");
         bindings[currBinding++] =
-                ActionSuggestedBinding(toggleAction, "/user/hand/left/input/x/click");
+                ActionSuggestedBinding(XButton, "/user/hand/left/input/x/click");
         bindings[currBinding++] =
-                ActionSuggestedBinding(toggleAction, "/user/hand/right/input/a/click");
+                ActionSuggestedBinding(AButton, "/user/hand/right/input/a/click");
         bindings[currBinding++] =
                 ActionSuggestedBinding(moveOnXAction,
                                        "/user/hand/left/input/squeeze/value");
@@ -686,17 +762,17 @@ int InitVRController() {
                 ActionSuggestedBinding(moveOnYAction,
                                        "/user/hand/right/input/trigger/value");
         bindings[currBinding++] = ActionSuggestedBinding(
-                moveOnJoystickAction, "/user/hand/left/input/thumbstick");
+                LThumbstick, "/user/hand/left/input/thumbstick");
         bindings[currBinding++] = ActionSuggestedBinding(
-                moveOnJoystickAction, "/user/hand/right/input/thumbstick");
+                RThumbstick, "/user/hand/right/input/thumbstick");
         bindings[currBinding++] = ActionSuggestedBinding(
-                thumbstickClickAction, "/user/hand/left/input/thumbstick/click");
+                LThumbstickClick, "/user/hand/left/input/thumbstick/click");
         bindings[currBinding++] = ActionSuggestedBinding(
-                thumbstickClickAction, "/user/hand/right/input/thumbstick/click");
+                RThumbstickClick, "/user/hand/right/input/thumbstick/click");
         bindings[currBinding++] =
-                ActionSuggestedBinding(vibrateLeftToggle, "/user/hand/left/input/y/click");
+                ActionSuggestedBinding(YButton, "/user/hand/left/input/y/click");
         bindings[currBinding++] =
-                ActionSuggestedBinding(vibrateRightToggle,
+                ActionSuggestedBinding(BButton,
                                        "/user/hand/right/input/b/click");
         bindings[currBinding++] =
                 ActionSuggestedBinding(vibrateLeftFeedback,
@@ -761,14 +837,22 @@ int InitVRController() {
             toggleAction,
             moveOnXAction,
             moveOnYAction,
-            moveOnJoystickAction,
-            thumbstickClickAction,
+            LThumbstickClick,
+            RThumbstickClick,
+            LThumbstick,
+            RThumbstick,
             vibrateLeftToggle,
             vibrateRightToggle,
             vibrateLeftFeedback,
             vibrateRightFeedback,
             aimPoseAction,
             gripPoseAction,
+            LTrigger,
+            RTrigger,
+            XButton,
+            YButton,
+            AButton,
+            BButton
     };
     for (size_t i = 0; i < sizeof(actionsToEnumerate) / sizeof(actionsToEnumerate[0]); ++i) {
         XrBoundSourcesForActionEnumerateInfo enumerateInfo = {
@@ -910,7 +994,7 @@ void CloseApp(struct android_app *app) {
 
 XrFrameState frameState = {XR_TYPE_FRAME_STATE};
 
-void syncControllers() {
+void SyncControllers() {
     if (leftControllerAimSpace == XR_NULL_HANDLE) {
         leftControllerAimSpace = CreateActionSpace(aimPoseAction, leftHandPath);
     }
@@ -964,8 +1048,8 @@ void syncControllers() {
 }
 
 bool IsVRButtonPressed(int button) {
-    XrActionStateBoolean vibrateRightState = GetActionStateBoolean(bindings[button].action);
-    return vibrateRightState.changedSinceLastSync & vibrateRightState.currentState;
+    XrActionStateBoolean buttonState = GetActionStateBoolean(bindings[button].action);
+    return buttonState.changedSinceLastSync & buttonState.currentState;
 }
 
 bool IsVRButtonDown(int button) {
@@ -982,6 +1066,7 @@ bool IsVRButtonUp(int button) {
 //    XrActionStateBoolean vibrateRightState = GetActionStateBoolean(vibrateRightToggle);
     return !GetActionStateBoolean(bindings[button].action).currentState;
 }
+
 void setVRControllerVibration(int controller, float frequency, float amplitude, long duration) {
     controller == 0 ? ALOGV("Firing Haptics on L ... ") : ALOGV("Firing Haptics on R ... ");
     XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
@@ -995,8 +1080,8 @@ void setVRControllerVibration(int controller, float frequency, float amplitude, 
             (const XrHapticBaseHeader *) &vibration));
 }
 
-Vector2 GetThumbstickAxisMovement(int controller, int axis) {
-    XrActionStateVector2f joystickState = GetActionStateVector2(moveOnJoystickAction);
+Vector2 GetThumbstickAxisMovement(int controller) {
+    XrActionStateVector2f joystickState = GetActionStateVector2(controller ? RThumbstick : LThumbstick);
     struct Vector2 vec = {joystickState.currentState.x, joystickState.currentState.y};
     return vec;
 }
@@ -1044,74 +1129,74 @@ void inLoop(struct android_app *app) {
     // update input information
 
 
-    // OpenXR input
-    {
-        XrActionStateBoolean toggleState = GetActionStateBoolean(toggleAction);
-        XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
-        XrActionStateBoolean thumbstickClickState =
-                GetActionStateBoolean(thumbstickClickAction);
-
-        // Update app logic based on input
-        if (toggleState.changedSinceLastSync) {
-            // Also stop haptics
-            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-            hapticActionInfo.action = vibrateLeftFeedback;
-            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-            hapticActionInfo.action = vibrateRightFeedback;
-            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-        }
-
-        if (thumbstickClickState.changedSinceLastSync &&
-            thumbstickClickState.currentState == XR_TRUE) {
-            float currentRefreshRate = 0.0f;
-            OXR(appState.pfnGetDisplayRefreshRate(appState.Session, &currentRefreshRate));
-            ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
-
-            const int requestedRateIndex = appState.RequestedDisplayRefreshRateIndex++ %
-                                           appState.NumSupportedDisplayRefreshRates;
-
-            const float requestRefreshRate =
-                    appState.SupportedDisplayRefreshRates[requestedRateIndex];
-            ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
-            OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, requestRefreshRate));
-        }
-
-        // The KHR simple profile doesn't have these actions, so the getters will fail
-        // and flood the log with errors.
-        if (useSimpleProfile == false) {
-            XrActionStateFloat moveXState = GetActionStateFloat(moveOnXAction);
-            XrActionStateFloat moveYState = GetActionStateFloat(moveOnYAction);
-            if (moveXState.changedSinceLastSync) {
-                appQuadPositionX = moveXState.currentState;
-            }
-            if (moveYState.changedSinceLastSync) {
-                appQuadPositionY = moveYState.currentState;
-            }
-
-            XrActionStateVector2f moveJoystickState =
-                    GetActionStateVector2(moveOnJoystickAction);
-            if (moveJoystickState.changedSinceLastSync) {
-                appCylPositionX = moveJoystickState.currentState.x;
-                appCylPositionY = moveJoystickState.currentState.y;
-            }
-        }
-
-        // Haptics
-        // NOTE: using the values from the example in the spec
-        if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
-            ALOGV("Firing Haptics on L ... ");
-            // fire haptics using output action
-            XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
-            vibration.amplitude = 0.5;
-            vibration.duration = ToXrTime(0.5); // half a second
-            vibration.frequency = 3000;
-            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-            hapticActionInfo.action = vibrateLeftFeedback;
-            OXR(xrApplyHapticFeedback(
-                    appState.Session, &hapticActionInfo,
-                    (const XrHapticBaseHeader *) &vibration));
-        }
-    }
+//    // OpenXR input
+//    {
+//        XrActionStateBoolean toggleState = GetActionStateBoolean(toggleAction);
+//        XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
+//        XrActionStateBoolean thumbstickClickState =
+//                GetActionStateBoolean(thumbstickClickAction);
+//
+//        // Update app logic based on input
+//        if (toggleState.changedSinceLastSync) {
+//            // Also stop haptics
+//            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
+//            hapticActionInfo.action = vibrateLeftFeedback;
+//            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
+//            hapticActionInfo.action = vibrateRightFeedback;
+//            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
+//        }
+//
+//        if (thumbstickClickState.changedSinceLastSync &&
+//            thumbstickClickState.currentState == XR_TRUE) {
+//            float currentRefreshRate = 0.0f;
+//            OXR(appState.pfnGetDisplayRefreshRate(appState.Session, &currentRefreshRate));
+//            ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
+//
+//            const int requestedRateIndex = appState.RequestedDisplayRefreshRateIndex++ %
+//                                           appState.NumSupportedDisplayRefreshRates;
+//
+//            const float requestRefreshRate =
+//                    appState.SupportedDisplayRefreshRates[requestedRateIndex];
+//            ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
+//            OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, requestRefreshRate));
+//        }
+//
+//        // The KHR simple profile doesn't have these actions, so the getters will fail
+//        // and flood the log with errors.
+//        if (useSimpleProfile == false) {
+//            XrActionStateFloat moveXState = GetActionStateFloat(moveOnXAction);
+//            XrActionStateFloat moveYState = GetActionStateFloat(moveOnYAction);
+//            if (moveXState.changedSinceLastSync) {
+//                appQuadPositionX = moveXState.currentState;
+//            }
+//            if (moveYState.changedSinceLastSync) {
+//                appQuadPositionY = moveYState.currentState;
+//            }
+//
+//            XrActionStateVector2f moveJoystickState =
+//                    GetActionStateVector2(moveOnJoystickAction);
+//            if (moveJoystickState.changedSinceLastSync) {
+//                appCylPositionX = moveJoystickState.currentState.x;
+//                appCylPositionY = moveJoystickState.currentState.y;
+//            }
+//        }
+//
+//        // Haptics
+//        // NOTE: using the values from the example in the spec
+//        if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
+//            ALOGV("Firing Haptics on L ... ");
+//            // fire haptics using output action
+//            XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
+//            vibration.amplitude = 0.5;
+//            vibration.duration = ToXrTime(0.5); // half a second
+//            vibration.frequency = 3000;
+//            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
+//            hapticActionInfo.action = vibrateLeftFeedback;
+//            OXR(xrApplyHapticFeedback(
+//                    appState.Session, &hapticActionInfo,
+//                    (const XrHapticBaseHeader *) &vibration));
+//        }
+//    }
 
 
 
@@ -1134,7 +1219,8 @@ void DrawVREquirect();
 
 void DrawVRWorld(int xOffset, int yOffset);
 
-void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView, int xOffset, int yOffset);
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView, int xOffset,
+                                int yOffset);
 
 void BeginVRMode(void) {
     XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
@@ -1251,7 +1337,8 @@ void DrawVRWorld(int xOffset, int yOffset) {
 }
 
 //helper for DrawVRWorld
-void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer, int xOffset, int yOffset) {
+void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer, int xOffset,
+                                int yOffset) {
     ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
 
     memset(layer, 0, sizeof(XrCompositionLayerProjectionView));

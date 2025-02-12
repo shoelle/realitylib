@@ -1207,9 +1207,9 @@ RLAPI bool IsVRButtonDown(int button);
 RLAPI bool IsVRButtonReleased(int button);
 RLAPI bool IsVRButtonUp(int button);
 
-RLAPI Vector2 GetThumbstickAxisMovement(int controller, int axis);
+RLAPI Vector2 GetThumbstickAxisMovement(int controller);
 RLAPI void ApplyHapticRight();
-RLAPI void syncControllers();
+RLAPI void SyncControllers();
 RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, long duration);
 //------------------------------------------------------------------------------------
 // Gestures and Touch Handling Functions (Module: rgestures)
