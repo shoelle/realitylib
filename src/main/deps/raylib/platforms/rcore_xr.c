@@ -1,22 +1,24 @@
-//
-// Created by lowej2 on 12/18/2024.
-//
-#include <openxr/openxr.h>
-#include "xr_support.h"
-//#include "../raylib.h"
-
 #define MAX_ENVIRONMENT_OBJECTS 100
 #define OBJECT_QUAD 1
 #define OBJECT_CYLINDER 2
 
+#include <openxr/openxr.h>
+#include "raylib.h"
+#ifndef RLGL_H
+#include "rlgl.h"
+#endif
+#include "raymath.h"
+#include "xr_support.h"
+
+void DrawCylinder(Vector3 position, float radiusTop, float radiusBottom, float height, int slices, Color color);
 
 typedef struct {
-    int type;           // OBJECT_QUAD or OBJECT_CYLINDER
-    Vector3 position;   // World position
-    Vector3 rotation;   // Euler angles (in radians) for orientation
-    float width;        // For quads
-    float height;       // For quads or cylinder height
-    float radius;       // For cylinders
+    int type;           //OBJECT_QUAD or OBJECT_CYLINDER
+    Vector3 position;   //World position (Raylib type)
+    Vector3 rotation;   //Euler angles (in radians) for orientation (Raylib type)
+    float width;        //For quads
+    float height;       //For quads or cylinder height
+    float radius;       //For cylinders
 } EnvironmentObject;
 
 EnvironmentObject environmentObjects[MAX_ENVIRONMENT_OBJECTS];
@@ -24,6 +26,10 @@ int numEnvironmentObjects = 0;
 
 bool vrInitialized = false;
 
+Vector3 ToRaylibVector3(XrVector3f xrVec) {
+    Vector3 vec = { xrVec.x, xrVec.y, xrVec.z };
+    return vec;
+}
 
 bool AppShouldClose(struct android_app *app) {
     return app->destroyRequested != 0;
@@ -1240,8 +1246,9 @@ void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView
                                 int yOffset);
 
 void BeginVRMode(void) {
-    XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
+    numEnvironmentObjects = 0; //reset object count
 
+    XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
     OXR(xrWaitFrame(appState.Session, &waitFrameInfo, &frameState));
 
     // Get the HMD pose, predicted for the middle of the time period during which
@@ -1335,9 +1342,48 @@ void DrawVRCubemap() {
 
 }
 
+
+void DrawEnvironmentObjects(void) {
+    for (int i = 0; i < numEnvironmentObjects; i++) {
+        EnvironmentObject obj = environmentObjects[i];
+
+        if (obj.type == OBJECT_QUAD) {
+            rlSetTexture(appState.Scene.QuadSwapChainImage[0].image);
+
+            Vector3 localVerts[4] = {
+                    {-obj.width / 2, -obj.height / 2, 0},
+                    {obj.width / 2, -obj.height / 2, 0},
+                    {obj.width / 2, obj.height / 2, 0},
+                    {-obj.width / 2, obj.height / 2, 0}
+            };
+
+            Matrix transform = MatrixRotateXYZ(obj.rotation);
+            transform = MatrixMultiply(transform, MatrixTranslate(obj.position.x, obj.position.y, obj.position.z));
+
+            Vector3 worldVerts[4];
+            for (int j = 0; j < 4; j++) {
+                worldVerts[j] = Vector3Transform(localVerts[j], transform);
+            }
+
+            rlBegin(RL_QUADS);
+            rlTexCoord2f(0, 1); rlVertex3f(worldVerts[0].x, worldVerts[0].y, worldVerts[0].z);
+            rlTexCoord2f(1, 1); rlVertex3f(worldVerts[1].x, worldVerts[1].y, worldVerts[1].z);
+            rlTexCoord2f(1, 0); rlVertex3f(worldVerts[2].x, worldVerts[2].y, worldVerts[2].z);
+            rlTexCoord2f(0, 0); rlVertex3f(worldVerts[3].x, worldVerts[3].y, worldVerts[3].z);
+            rlEnd();
+
+            rlSetTexture(0);
+        }
+        else if (obj.type == OBJECT_CYLINDER) {
+            DrawCylinder(obj.position, obj.radius, obj.radius, obj.height, 16, WHITE);
+        }
+    }
+}
+
 //helper for DrawVRBackground
 void DrawVRWorld(int xOffset, int yOffset) {
     ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
+    DrawEnvironmentObjects(); // Add environment objects to projection layer
 
     XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
@@ -1391,38 +1437,21 @@ void DrawVRBackground(int xOffset, int yOffset) {
 }
 
 
-void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float aspectRatio) {
-    XrCompositionLayerCylinderKHR cylinder = {XR_TYPE_COMPOSITION_LAYER_CYLINDER_KHR};
-    cylinder.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
-    cylinder.space = appState.LocalSpace;
-    cylinder.eyeVisibility = XR_EYE_VISIBILITY_BOTH;
-
-    //setup swapchain
-    memset(&cylinder.subImage, 0, sizeof(XrSwapchainSubImage));
-    cylinder.subImage.swapchain = appState.Scene.CylinderSwapChain.Handle;
-    cylinder.subImage.imageRect.extent.width = appState.Scene.CylinderSwapChain.Width;
-    cylinder.subImage.imageRect.extent.height = appState.Scene.CylinderSwapChain.Height;
-
-    //convert position and axis to XR format
-    XrVector3f xrPosition = {position.x, position.y, position.z};
-    XrVector3f xrAxis = {axis.x, axis.y, axis.z};
-
-    //setup cylinder dimensions
-    cylinder.radius = radius;
-    cylinder.centralAngle = MATH_PI / 4.0;
-    cylinder.aspectRatio = aspectRatio;
-
-    //setup position and orientation
-    cylinder.pose.position = xrPosition;
-    XrQuaternionf_CreateFromAxisAngle(&cylinder.pose.orientation, &xrAxis,
-                                      -45.0f * MATH_PI / 180.0f);
-
-    appState.Layers[appState.LayerCount++].Cylinder = cylinder;
+void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float height) {
+    if (numEnvironmentObjects < MAX_ENVIRONMENT_OBJECTS) {
+        EnvironmentObject *obj = &environmentObjects[numEnvironmentObjects];
+        obj->type = OBJECT_CYLINDER;
+        obj->position = position;
+        obj->rotation = axis; // Assuming axis represents rotation
+        obj->radius = radius;
+        obj->height = height;
+        numEnvironmentObjects++;
+    }
 }
 
 //helper for DrawVRQuad
 XrCompositionLayerQuad
-CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height) {
+CreateQuadLayer(XrEyeVisibility eye, XrVector3f position, XrVector3f axis, float width, float height) {
     XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
     quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
     quad.space = appState.CurrentSpace;
@@ -1446,26 +1475,17 @@ CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width
 }
 
 void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
-    //drawing left eye quad
-    XrCompositionLayerQuad leftQuad = CreateQuadLayer(
-            XR_EYE_VISIBILITY_LEFT,
-            position,
-            axis,
-            width,
-            height
-    );
-    appState.Layers[appState.LayerCount++].Quad = leftQuad;
-
-    //drawing the right eye quad
-    XrCompositionLayerQuad rightQuad = CreateQuadLayer(
-            XR_EYE_VISIBILITY_RIGHT,
-            position,
-            axis,
-            width,
-            height
-    );
-    appState.Layers[appState.LayerCount++].Quad = rightQuad;
+    if (numEnvironmentObjects < MAX_ENVIRONMENT_OBJECTS) {
+        EnvironmentObject *obj = &environmentObjects[numEnvironmentObjects];
+        obj->type = OBJECT_QUAD;
+        obj->position = position;
+        obj->rotation = axis; // Assuming axis represents rotation
+        obj->width = width;
+        obj->height = height;
+        numEnvironmentObjects++;
+    }
 }
+
 
 void EndVRMode(void) {
     const XrCompositionLayerBaseHeader *layers[ovrMaxLayerCount] = {0};

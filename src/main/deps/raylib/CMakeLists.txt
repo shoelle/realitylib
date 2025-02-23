@@ -6,29 +6,33 @@ set(OPENXR_PREVIEW_HEADER ../OpenXR)
 
 # Define a library for raylib
 add_library(raylib STATIC
-    rcore.c
-    rmodels.c
-    rshapes.c
-    rtext.c
-    rtextures.c
-    raudio.c
-    utils.c
-    )
+        rcore.c
+        rmodels.c
+        rshapes.c
+        rtext.c
+        rtextures.c
+        raudio.c
+        utils.c
+        platforms/rcore_xr.c  # Add rcore_xr.c to the source files
+)
 
-# Include headers directory for android_native_app_glue.c
-include_directories(${ANDROID_NDK}/sources/android/native_app_glue/
-                    ${OPENXR_PREVIEW_HEADER}
-                    ${CMAKE_CURRENT_SOURCE_DIR}/platforms)
+# Include headers directory for android_native_app_glue.c, raylib headers, and platforms
+include_directories(
+        ${ANDROID_NDK}/sources/android/native_app_glue/
+        ${OPENXR_PREVIEW_HEADER}
+        ${CMAKE_CURRENT_SOURCE_DIR}  # Add this to include the directory containing rlgl.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms  # Already included, but kept for clarity
+)
 
 # Add android_native_app_glue.c to the source files
 list(APPEND SOURCES ${ANDROID_NDK}/sources/android/native_app_glue/android_native_app_glue.c)
 
 # Define compiler macros for raylib
 target_compile_definitions(raylib PRIVATE
-    GRAPHICS_API_OPENGL_ES2
-    PLATFORM_ANDROID
-    __ANDROID__
-    )
+        GRAPHICS_API_OPENGL_ES2
+        PLATFORM_ANDROID
+        __ANDROID__
+)
 
 # Add specific compilation options based on target Android architecture
 if(CMAKE_ANDROID_ARCH_ABI STREQUAL "armeabi-v7a")

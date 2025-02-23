@@ -51,10 +51,10 @@ void android_main(struct android_app* app) {
         }
 
         DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
-        DrawVRCylinder((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
-        if (IsVRButtonDown(1)) {
-            DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
-        }
+        //DrawVRCylinder((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){0.0f, 0.0f, 0.0f}, 2.0f, 2.0f); // this draws the cylinder objects
+//        if (IsVRButtonDown(1)) {
+//            DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
+//        }
         struct Vector2 rJoystickVec = GetThumbstickAxisMovement(1);
         selfLoc = (Vector3) {selfLoc.x + rJoystickVec.x * speed, selfLoc.y, selfLoc.z - rJoystickVec.y * speed};
 
