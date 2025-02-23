@@ -5,6 +5,23 @@
 #include "xr_support.h"
 //#include "../raylib.h"
 
+#define MAX_ENVIRONMENT_OBJECTS 100
+#define OBJECT_QUAD 1
+#define OBJECT_CYLINDER 2
+
+
+typedef struct {
+    int type;           // OBJECT_QUAD or OBJECT_CYLINDER
+    Vector3 position;   // World position
+    Vector3 rotation;   // Euler angles (in radians) for orientation
+    float width;        // For quads
+    float height;       // For quads or cylinder height
+    float radius;       // For cylinders
+} EnvironmentObject;
+
+EnvironmentObject environmentObjects[MAX_ENVIRONMENT_OBJECTS];
+int numEnvironmentObjects = 0;
+
 bool vrInitialized = false;
 
 
