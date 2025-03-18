@@ -1067,6 +1067,55 @@ bool IsVRButtonUp(int button) {
     return !GetActionStateBoolean(bindings[button].action).currentState;
 }
 
+float GetVRFloat(int button) {
+    XrActionStateFloat inputState = GetActionStateFloat(bindings[button].action);
+    return inputState.currentState;
+}
+
+Vector4 GetVROrientation(int controller) {
+    int POSE_TYPE = 0;
+    XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    if (ActionPoseIsActive(controllers[controller * 2], subactionPath[controller * 2])) {
+        POSE_TYPE = 0;
+    }
+    else {
+        POSE_TYPE = 1;
+    }
+    XrPosef pose =  appState.Scene.TrackedController[controller * 2 + POSE_TYPE].Pose;
+    Vector4 v = {pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w};
+    return v;
+}
+
+Vector3 GetVRPosition(int controller) {
+    //TODO: fix code duplication here and above
+    int POSE_TYPE = 0;
+    XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    if (ActionPoseIsActive(controllers[controller * 2], subactionPath[controller * 2])) {
+        POSE_TYPE = 0;
+    }
+    else {
+        POSE_TYPE = 1;
+    }
+    XrPosef pose =  appState.Scene.TrackedController[controller * 2 + POSE_TYPE].Pose;
+    Vector3 v = {pose.position.x, pose.position.y, pose.position.z};
+    ALOGV("TEST: position of right controller is %f %f %f\n", v.x, v.y, v.z);
+    return v;
+}
+
 void setVRControllerVibration(int controller, float frequency, float amplitude, long duration) {
     controller == 0 ? ALOGV("Firing Haptics on L ... ") : ALOGV("Firing Haptics on R ... ");
     XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
@@ -1113,6 +1162,7 @@ void inLoop(struct android_app *app) {
     // Create the scene if not yet created.
     // The scene is created here to be able to show a loading icon.
     if (!ovrScene_IsCreated(&appState.Scene)) {
+        ALOGV("Creating Scene\n");
         ovrScene_Create(
                 app->activity->assetManager, appState.Instance, appState.Session,
                 &appState.Scene);
@@ -1407,7 +1457,7 @@ void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float aspectRa
 XrCompositionLayerQuad
 CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height) {
     XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-    quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+//    quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
     quad.space = appState.CurrentSpace;
     quad.eyeVisibility = eye;
     memset(&quad.subImage, 0, sizeof(XrSwapchainSubImage));

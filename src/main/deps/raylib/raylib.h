@@ -1207,7 +1207,13 @@ RLAPI bool IsVRButtonDown(int button);
 RLAPI bool IsVRButtonReleased(int button);
 RLAPI bool IsVRButtonUp(int button);
 
+RLAPI float GetVRFloat(int button);
+
 RLAPI Vector2 GetThumbstickAxisMovement(int controller);
+
+RLAPI Vector4 GetVROrientation(int controller);
+RLAPI Vector3 GetVRPosition(int controller);
+
 RLAPI void ApplyHapticRight();
 RLAPI void SyncControllers();
 RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, long duration);
