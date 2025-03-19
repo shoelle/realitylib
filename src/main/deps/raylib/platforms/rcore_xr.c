@@ -2224,6 +2224,25 @@ void freeArrayList(ArrayList* list) {
 ArrayList* allObjects;
 
 
+void DrawVRCuboid(Vector3 pos, Vector3 size, Vector3 colorVector){
+        float color[3];
+        color[0] = colorVector.x;
+        color[1] = colorVector.y;
+        color[2] = colorVector.z;
+        ovrGeometry sceneCube;
+        InitCube(&sceneCube, color);
+        XrMatrix4x4f pose;
+        XrMatrix4x4f_CreateTranslation(&pose, pos.x, pos.y, pos.z); // Spread them out
+        XrMatrix4x4f scale;
+        XrMatrix4x4f_CreateScale(&scale, size.x, size.y, size.z); // Small cubes
+        XrMatrix4x4f model;
+        XrMatrix4x4f_Multiply(&model, &pose, &scale);
+        renderingObject obj;
+        obj.model = model;
+        obj.objType = sceneCube;
+        addToArrayList(allObjects, obj);
+}
+
 static void ovrRenderer_RenderFrame(
         ovrRenderer* renderer,
         const ovrScene* scene,
@@ -2233,9 +2252,6 @@ static void ovrRenderer_RenderFrame(
     if (scene->BackGroundType != BACKGROUND_NONE) {
         clearAlpha = 0.0f;
     }
-    allObjects = malloc(sizeof(ArrayList));
-    initArrayList(allObjects, 1);
-
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer* frameBuffer = &renderer->FrameBuffer[eye];
 
@@ -2270,44 +2286,7 @@ static void ovrRenderer_RenderFrame(
         GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
         GL(glBindVertexArray(scene->GroundPlane.VertexArrayObject));
         GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
-        for (int i = 0; i < 20; i++) {
-            float color[3];
-            color[0] = 1.0;
-            color[1] = 1.0;
-            color[2] = .02 * i;
-            ovrGeometry sceneCube;
-            InitCube(&sceneCube, color);
-            XrMatrix4x4f pose;
-            XrMatrix4x4f_CreateTranslation(&pose, i * 0.2f, 0.0f, -1.0f); // Spread them out
-            XrMatrix4x4f scale;
-            XrMatrix4x4f_CreateScale(&scale, 0.1f, 0.1f, 0.1f); // Small cubes
-            XrMatrix4x4f model;
-            XrMatrix4x4f_Multiply(&model, &pose, &scale);
-            renderingObject obj;
-            obj.model = model;
-            obj.objType = sceneCube;
-            addToArrayList(allObjects, obj);
-        }
-        for (int i = 0; i < 4; i++) {
-            if (scene->TrackedController[i].Active == false) {
-                continue;
-            }
-            XrMatrix4x4f pose;
-            XrMatrix4x4f_CreateFromRigidTransform(&pose, &scene->TrackedController[i].Pose);
-            XrMatrix4x4f scale;
-            if (i & 1) {
-                XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
-            } else {
-                XrMatrix4x4f_CreateScale(&scale, 0.02f, 0.02f, 0.06f);
-            }
-            XrMatrix4x4f model;
-            XrMatrix4x4f_Multiply(&model, &pose, &scale);
-            glUniformMatrix4fv(
-                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
-            GL(glBindVertexArray(scene->Box.VertexArrayObject));
-            GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
-        }
-        for (int i = 0; i < 20; i++) { // Render 5 cubes
+        for (int i = 0; i < allObjects->size; i++) { // Render 5 cubes
             glUniformMatrix4fv(
                     scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &getFromArrayList(allObjects, i)->model.m[0]);
 
@@ -4098,6 +4077,8 @@ void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *pView
                                 int yOffset);
 
 void BeginVRMode(void) {
+    allObjects = malloc(sizeof(ArrayList));
+    initArrayList(allObjects, 1);
     XrFrameWaitInfo waitFrameInfo = {XR_TYPE_FRAME_WAIT_INFO};
 
     OXR(xrWaitFrame(appState.Session, &waitFrameInfo, &frameState));
