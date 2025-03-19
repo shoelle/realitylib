@@ -2115,6 +2115,69 @@ typedef struct {
     XrMatrix4x4f ProjectionMatrix[ovrMaxNumEyes];
 } ovrSceneMatrices;
 
+
+typedef struct {
+    GLuint VertexArrayObject;
+    GLuint VertexBufferObject;
+    GLuint IndexBufferObject;
+    int IndexCount;
+} Cube;
+
+void InitCube(Cube* cube, float color[3]) {
+    // Cube vertices: Position (X, Y, Z)
+    float vertices[] = {
+            // Front face
+            -0.5f, -0.5f,  0.5f,  color[0], color[1], color[2], // Add color to position
+            0.5f, -0.5f,  0.5f,  color[0], color[1], color[2],
+            0.5f,  0.5f,  0.5f,  color[0], color[1], color[2],
+            -0.5f,  0.5f,  0.5f,  color[0], color[1], color[2],
+            // Back face
+            -0.5f, -0.5f, -0.5f,  color[0], color[1], color[2],
+            0.5f, -0.5f, -0.5f,  color[0], color[1], color[2],
+            0.5f,  0.5f, -0.5f,  color[0], color[1], color[2],
+            -0.5f,  0.5f, -0.5f,  color[0], color[1], color[2]
+    };
+
+    // Index buffer (Two triangles per face, 6 faces)
+    unsigned short indices[] = {
+            0, 1, 2,  2, 3, 0,  // Front
+            1, 5, 6,  6, 2, 1,  // Right
+            5, 4, 7,  7, 6, 5,  // Back
+            4, 0, 3,  3, 7, 4,  // Left
+            3, 2, 6,  6, 7, 3,  // Top
+            4, 5, 1,  1, 0, 4   // Bottom
+    };
+
+    // Store the number of indices
+    cube->IndexCount = sizeof(indices) / sizeof(indices[0]);
+
+    // Generate and bind VAO
+    glGenVertexArrays(1, &cube->VertexArrayObject);
+    glBindVertexArray(cube->VertexArrayObject);
+
+    // Generate and bind VBO
+    glGenBuffers(1, &cube->VertexBufferObject);
+    glBindBuffer(GL_ARRAY_BUFFER, cube->VertexBufferObject);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+    // Generate and bind IBO (Index Buffer Object)
+    glGenBuffers(1, &cube->IndexBufferObject);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube->IndexBufferObject);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+    // Define vertex attributes (position + color)
+    // Position attribute (location 0)
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+
+    // Color attribute (location 1)
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+
+    // Unbind VAO
+    glBindVertexArray(0);
+}
+
 static void ovrRenderer_RenderFrame(
         ovrRenderer* renderer,
         const ovrScene* scene,
@@ -2179,12 +2242,30 @@ static void ovrRenderer_RenderFrame(
             GL(glBindVertexArray(scene->Box.VertexArrayObject));
             GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
+        float color[3];
+        color[0] = 1.0;
+        color[1] = 1.0;
+        Cube sceneCube;
+        InitCube(&sceneCube, color);
+        for (int i = 0; i < 20; i++) { // Render 5 cubes
+            XrMatrix4x4f pose;
+            XrMatrix4x4f_CreateTranslation(&pose, i * 0.2f, 0.0f, -1.0f); // Spread them out
+            XrMatrix4x4f scale;
+            XrMatrix4x4f_CreateScale(&scale, 0.1f, 0.1f, 0.1f); // Small cubes
+            XrMatrix4x4f model;
+            XrMatrix4x4f_Multiply(&model, &pose, &scale);
+
+            glUniformMatrix4fv(
+                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+
+            GL(glBindVertexArray(sceneCube.VertexArrayObject));
+            GL(glDrawElements(GL_TRIANGLES, sceneCube.IndexCount, GL_UNSIGNED_SHORT, NULL));
+        }
         glUniformMatrix4fv(
                 scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &modelMatrix.m[0]);
 
         GL(glBindVertexArray(0));
         GL(glUseProgram(0));
-
         ovrFramebuffer_Resolve(frameBuffer);
 
         ovrFramebuffer_Release(frameBuffer);

@@ -1369,7 +1369,7 @@ void DrawVRCubemap() {
 }
 
 //helper for DrawVRBackground
-void DrawVRWorld(int xOffset, int yOffset) {
+void AddObjectsToLayer(int xOffset, int yOffset) {
     ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
 
     XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
@@ -1386,7 +1386,7 @@ void DrawVRWorld(int xOffset, int yOffset) {
     appState.Layers[appState.LayerCount++].Projection = projection_layer;
 }
 
-//helper for DrawVRWorld
+//helper for AddObjectsToLayer
 void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer, int xOffset,
                                 int yOffset) {
     ovrFramebuffer *frameBuffer = &appState.Renderer.FrameBuffer[eye];
@@ -1416,10 +1416,6 @@ void DrawVRBackground(int xOffset, int yOffset) {
         shouldRenderWorldLayer = false;
     } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
         DrawVREquirect();
-    }
-
-    if (shouldRenderWorldLayer) {
-        DrawVRWorld(xOffset, yOffset);
     }
 }
 
@@ -1501,6 +1497,10 @@ void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
 }
 
 void EndVRMode(void) {
+
+    if (shouldRenderWorldLayer) {
+        AddObjectsToLayer(0.0, 0.0);
+    }
     const XrCompositionLayerBaseHeader *layers[ovrMaxLayerCount] = {0};
     for (int i = 0; i < appState.LayerCount; i++) {
         layers[i] = (const XrCompositionLayerBaseHeader *) &appState.Layers[i];
