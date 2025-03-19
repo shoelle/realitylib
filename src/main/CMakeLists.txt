@@ -15,7 +15,7 @@ endif()
 # Add subdirectories for dependencies
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raylib)
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/raymob)
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/Samples)
+add_subdirectory(${CMAKE_SOURCE_DIR}/deps/Samples/SampleXrFramework)
 
 # Fetch all source files recursively, excluding 'deps' source files
 file(GLOB_RECURSE SOURCES "${CMAKE_SOURCE_DIR}/*.c" "${CMAKE_SOURCE_DIR}/*.cpp")
@@ -46,7 +46,7 @@ endif()
 # Include dependency headers
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raylib")
 target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/raymob")
-target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/Samples")
+target_include_directories(${PROJECT_NAME} PRIVATE "${CMAKE_SOURCE_DIR}/deps/Samples/SampleXrFramework")
 
 # Link libraries
 target_link_libraries(${PROJECT_NAME} PRIVATE raylib native_activity_framework)

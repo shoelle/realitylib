@@ -183,7 +183,7 @@
 
 // OpenGL ES 3.0 uses OpenGL ES 2.0 functionality (and more)
 #if defined(GRAPHICS_API_OPENGL_ES3)
-    #define GRAPHICS_API_OPENGL_ES2
+//    #define GRAPHICS_API_OPENGL_ES2
 #endif
 
 // Support framebuffer objects by default
