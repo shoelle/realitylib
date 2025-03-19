@@ -1207,7 +1207,11 @@ RLAPI bool IsVRButtonDown(int button);
 RLAPI bool IsVRButtonReleased(int button);
 RLAPI bool IsVRButtonUp(int button);
 
+RLAPI float GetVRFloat(int button);
+
 RLAPI Vector2 GetThumbstickAxisMovement(int controller);
+RLAPI Vector4 GetVROrientation(int controller);
+RLAPI Vector3 GetVRPosition(int controller);
 RLAPI void ApplyHapticRight();
 RLAPI void SyncControllers();
 RLAPI void setVRControllerVibration(int controller, float frequency, float amplitude, long duration);
@@ -1257,6 +1261,12 @@ RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiu
 RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
 RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 RLAPI void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height);
+RLAPI void BeginVRMode(void);                                    // Begin VR rendering mode, initializes frame
+RLAPI void EndVRMode(void);                                      // End VR rendering mode, submits layers to OpenXR
+RLAPI void DrawVRBackground(int xOffset, int yOffset);           // Draw VR background and world layers
+RLAPI void DrawVRWorld(int xOffset, int yOffset);                // Draw VR world with environment objects
+RLAPI void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float height); // Add a cylinder to the environment objects
+RLAPI void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height);     // Add a quad to the environment objects
 RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
 RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle

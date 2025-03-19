@@ -1090,6 +1090,56 @@ bool IsVRButtonUp(int button) {
     return !GetActionStateBoolean(bindings[button].action).currentState;
 }
 
+float GetVRFloat(int button) {
+    XrActionStateFloat inputState = GetActionStateFloat(bindings[button].action);
+    return inputState.currentState;
+}
+
+Vector4 GetVROrientation(int controller) {
+    int POSE_TYPE = 0;
+    XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    if (ActionPoseIsActive(controllers[controller * 2], subactionPath[controller * 2])) {
+        POSE_TYPE = 0;
+    }
+    else {
+        POSE_TYPE = 1;
+    }
+    XrPosef pose =  appState.Scene.TrackedController[controller * 2 + POSE_TYPE].Pose;
+    Vector4 v = {pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w};
+    return v;
+}
+
+Vector3 GetVRPosition(int controller) {
+    //TODO: fix code duplication here and above
+    int POSE_TYPE = 0;
+    XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
+    XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
+    XrSpace controllerSpace[] = {
+            leftControllerAimSpace,
+            leftControllerGripSpace,
+            rightControllerAimSpace,
+            rightControllerGripSpace,
+    };
+    if (ActionPoseIsActive(controllers[controller * 2], subactionPath[controller * 2])) {
+        POSE_TYPE = 0;
+    }
+    else {
+        POSE_TYPE = 1;
+    }
+    XrPosef pose =  appState.Scene.TrackedController[controller * 2 + POSE_TYPE].Pose;
+    Vector3 v = {pose.position.x, pose.position.y, pose.position.z};
+    ALOGV("TEST: position of right controller is %f %f %f\n", v.x, v.y, v.z);
+    return v;
+}
+
+
 void setVRControllerVibration(int controller, float frequency, float amplitude, long duration) {
     controller == 0 ? ALOGV("Firing Haptics on L ... ") : ALOGV("Firing Haptics on R ... ");
     XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
@@ -1136,6 +1186,7 @@ void inLoop(struct android_app *app) {
     // Create the scene if not yet created.
     // The scene is created here to be able to show a loading icon.
     if (!ovrScene_IsCreated(&appState.Scene)) {
+        ALOGV("Creating Scene\n");
         ovrScene_Create(
                 app->activity->assetManager, appState.Instance, appState.Session,
                 &appState.Scene);
@@ -1344,8 +1395,10 @@ void DrawVRCubemap() {
 
 
 void DrawEnvironmentObjects(void) {
+    ALOGV("Drawing %d environment objects", numEnvironmentObjects);
     for (int i = 0; i < numEnvironmentObjects; i++) {
         EnvironmentObject obj = environmentObjects[i];
+        ALOGV("Object %d: Type %d at (%f, %f, %f)", i, obj.type, obj.position.x, obj.position.y, obj.position.z);
 
         if (obj.type == OBJECT_QUAD) {
             rlSetTexture(appState.Scene.QuadSwapChainImage[0].image);
@@ -1365,17 +1418,27 @@ void DrawEnvironmentObjects(void) {
                 worldVerts[j] = Vector3Transform(localVerts[j], transform);
             }
 
+            rlSetTexture(0); //No texture while we work this out, just one color
             rlBegin(RL_QUADS);
+            rlColor4ub(255, 0, 0, 255); //Red for front
             rlTexCoord2f(0, 1); rlVertex3f(worldVerts[0].x, worldVerts[0].y, worldVerts[0].z);
             rlTexCoord2f(1, 1); rlVertex3f(worldVerts[1].x, worldVerts[1].y, worldVerts[1].z);
             rlTexCoord2f(1, 0); rlVertex3f(worldVerts[2].x, worldVerts[2].y, worldVerts[2].z);
             rlTexCoord2f(0, 0); rlVertex3f(worldVerts[3].x, worldVerts[3].y, worldVerts[3].z);
             rlEnd();
 
-            rlSetTexture(0);
+            //Back face (reverse winding order), giving this a try as per tony's advice
+            rlBegin(RL_QUADS);
+            rlColor4ub(0, 255, 0, 255); // Green for back
+            rlTexCoord2f(0, 1); rlVertex3f(worldVerts[0].x, worldVerts[0].y, worldVerts[0].z);
+            rlTexCoord2f(0, 0); rlVertex3f(worldVerts[3].x, worldVerts[3].y, worldVerts[3].z);
+            rlTexCoord2f(1, 0); rlVertex3f(worldVerts[2].x, worldVerts[2].y, worldVerts[2].z);
+            rlTexCoord2f(1, 1); rlVertex3f(worldVerts[1].x, worldVerts[1].y, worldVerts[1].z);
+            rlEnd();
         }
         else if (obj.type == OBJECT_CYLINDER) {
-            DrawCylinder(obj.position, obj.radius, obj.radius, obj.height, 16, WHITE);
+            //DrawCylinder(obj.position, obj.radius, obj.radius, obj.height, 16, WHITE);
+            DrawCube(obj.position, obj.radius * 2, obj.height, obj.radius * 2, WHITE); //temp changing this to a cube
         }
     }
 }
@@ -1423,13 +1486,13 @@ void SetupProjectionLayerForEye(int eye, XrCompositionLayerProjectionView *layer
 void DrawVRBackground(int xOffset, int yOffset) {
     shouldRenderWorldLayer = true;
 
-    if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
-        appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE) {
-        DrawVRCubemap();
-        shouldRenderWorldLayer = false;
-    } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
-        DrawVREquirect();
-    }
+//    if (appState.Scene.BackGroundType == BACKGROUND_CUBEMAP &&
+//        appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE) {
+//        DrawVRCubemap();
+//        shouldRenderWorldLayer = false;
+//    } else if (appState.Scene.BackGroundType == BACKGROUND_EQUIRECT) {
+//        DrawVREquirect();
+//    }
 
     if (shouldRenderWorldLayer) {
         DrawVRWorld(xOffset, yOffset);
@@ -1453,7 +1516,7 @@ void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float height) 
 XrCompositionLayerQuad
 CreateQuadLayer(XrEyeVisibility eye, XrVector3f position, XrVector3f axis, float width, float height) {
     XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
-    quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
+    //quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
     quad.space = appState.CurrentSpace;
     quad.eyeVisibility = eye;
     memset(&quad.subImage, 0, sizeof(XrSwapchainSubImage));
@@ -1475,6 +1538,7 @@ CreateQuadLayer(XrEyeVisibility eye, XrVector3f position, XrVector3f axis, float
 }
 
 void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
+    ALOGV("ENTERING DrawVRQuad: %d environment objects", numEnvironmentObjects);
     if (numEnvironmentObjects < MAX_ENVIRONMENT_OBJECTS) {
         EnvironmentObject *obj = &environmentObjects[numEnvironmentObjects];
         obj->type = OBJECT_QUAD;
