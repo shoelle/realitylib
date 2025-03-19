@@ -2233,7 +2233,8 @@ static void ovrRenderer_RenderFrame(
     if (scene->BackGroundType != BACKGROUND_NONE) {
         clearAlpha = 0.0f;
     }
-    //initArrayList(allObjects, 1);
+    allObjects = malloc(sizeof(ArrayList));
+    initArrayList(allObjects, 1);
 
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer* frameBuffer = &renderer->FrameBuffer[eye];
@@ -2285,7 +2286,7 @@ static void ovrRenderer_RenderFrame(
             renderingObject obj;
             obj.model = model;
             obj.objType = sceneCube;
-            //addToArrayList(allObjects, obj);
+            addToArrayList(allObjects, obj);
         }
         for (int i = 0; i < 4; i++) {
             if (scene->TrackedController[i].Active == false) {
@@ -2307,24 +2308,11 @@ static void ovrRenderer_RenderFrame(
             GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
         for (int i = 0; i < 20; i++) { // Render 5 cubes
-            float color[3];
-            color[0] = 1.0;
-            color[1] = 1.0;
-            color[2] = 0.03 * i;
-            ovrGeometry sceneCube;
-            InitCube(&sceneCube, color);
-            XrMatrix4x4f pose;
-            XrMatrix4x4f_CreateTranslation(&pose, i * 0.2f, 0.0f, -1.0f); // Spread them out
-            XrMatrix4x4f scale;
-            XrMatrix4x4f_CreateScale(&scale, 0.1f, 0.1f, 0.1f); // Small cubes
-            XrMatrix4x4f model;
-            XrMatrix4x4f_Multiply(&model, &pose, &scale);
-
             glUniformMatrix4fv(
-                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &getFromArrayList(allObjects, i)->model.m[0]);
 
-            GL(glBindVertexArray(sceneCube.VertexArrayObject));
-            GL(glDrawElements(GL_TRIANGLES, sceneCube.IndexCount, GL_UNSIGNED_SHORT, NULL));
+            GL(glBindVertexArray(getFromArrayList(allObjects, i)->objType.VertexArrayObject));
+            GL(glDrawElements(GL_TRIANGLES, getFromArrayList(allObjects, i)->objType.IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
         glUniformMatrix4fv(
                 scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &modelMatrix.m[0]);
@@ -2335,7 +2323,7 @@ static void ovrRenderer_RenderFrame(
 
         ovrFramebuffer_Release(frameBuffer);
     }
-
+    freeArrayList(allObjects);
     ovrFramebuffer_SetNone();
 }
 
