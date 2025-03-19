@@ -2167,6 +2167,63 @@ void InitCube(ovrGeometry* cube, float color[3]) {
     glBindVertexArray(0);
 }
 
+typedef struct{
+    ovrGeometry objType;
+    XrMatrix4x4f model;
+} renderingObject;
+
+typedef struct {
+    renderingObject *array;    // Pointer to the array
+    size_t size;   // Number of elements currently in the array
+    size_t capacity;  // Total allocated size of the array
+} ArrayList;
+
+void initArrayList(ArrayList* list, size_t initialCapacity) {
+    list->array = (renderingObject*)malloc(initialCapacity * sizeof(renderingObject));  // Allocate memory
+    list->size = 0;  // No elements initially
+    list->capacity = initialCapacity;  // Set initial capacity
+}
+
+// Function to add an element to the array list
+void addToArrayList(ArrayList* list, renderingObject value) {
+    // Resize the array if it's full
+    if (list->size == list->capacity) {
+        list->capacity *= 2;  // Double the capacity
+        list->array = (renderingObject*)realloc(list->array, list->capacity * sizeof(renderingObject));  // Reallocate memory
+    }
+
+    list->array[list->size] = value;  // Add the new value
+    list->size++;  // Increment the size of the list
+}
+
+// Function to remove the last element from the array list
+void removeFromArrayList(ArrayList* list) {
+    if (list->size > 0) {
+        list->size--;  // Decrease the size
+    }
+}
+
+// Function to get the element at a specific index
+renderingObject* getFromArrayList(ArrayList* list, size_t index) {
+    if (index < list->size) {
+        return &list->array[index];
+    } else {
+        // Return some error value if the index is out of bounds
+        return NULL;
+    }
+}
+
+// Function to free the allocated memory
+void freeArrayList(ArrayList* list) {
+    free(list->array);  // Free the array memory
+    list->array = NULL;  // Set the pointer to NULL
+    list->size = 0;  // Reset size
+    list->capacity = 0;  // Reset capacity
+}
+
+ArrayList* allObjects;
+
+
 static void ovrRenderer_RenderFrame(
         ovrRenderer* renderer,
         const ovrScene* scene,
@@ -2176,6 +2233,7 @@ static void ovrRenderer_RenderFrame(
     if (scene->BackGroundType != BACKGROUND_NONE) {
         clearAlpha = 0.0f;
     }
+    //initArrayList(allObjects, 1);
 
     for (int eye = 0; eye < ovrMaxNumEyes; eye++) {
         ovrFramebuffer* frameBuffer = &renderer->FrameBuffer[eye];
@@ -2211,7 +2269,24 @@ static void ovrRenderer_RenderFrame(
         GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
         GL(glBindVertexArray(scene->GroundPlane.VertexArrayObject));
         GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
-
+        for (int i = 0; i < 20; i++) {
+            float color[3];
+            color[0] = 1.0;
+            color[1] = 1.0;
+            color[2] = .02 * i;
+            ovrGeometry sceneCube;
+            InitCube(&sceneCube, color);
+            XrMatrix4x4f pose;
+            XrMatrix4x4f_CreateTranslation(&pose, i * 0.2f, 0.0f, -1.0f); // Spread them out
+            XrMatrix4x4f scale;
+            XrMatrix4x4f_CreateScale(&scale, 0.1f, 0.1f, 0.1f); // Small cubes
+            XrMatrix4x4f model;
+            XrMatrix4x4f_Multiply(&model, &pose, &scale);
+            renderingObject obj;
+            obj.model = model;
+            obj.objType = sceneCube;
+            //addToArrayList(allObjects, obj);
+        }
         for (int i = 0; i < 4; i++) {
             if (scene->TrackedController[i].Active == false) {
                 continue;
@@ -2231,12 +2306,13 @@ static void ovrRenderer_RenderFrame(
             GL(glBindVertexArray(scene->Box.VertexArrayObject));
             GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
-        float color[3];
-        color[0] = 1.0;
-        color[1] = 1.0;
-        ovrGeometry sceneCube;
-        InitCube(&sceneCube, color);
         for (int i = 0; i < 20; i++) { // Render 5 cubes
+            float color[3];
+            color[0] = 1.0;
+            color[1] = 1.0;
+            color[2] = 0.03 * i;
+            ovrGeometry sceneCube;
+            InitCube(&sceneCube, color);
             XrMatrix4x4f pose;
             XrMatrix4x4f_CreateTranslation(&pose, i * 0.2f, 0.0f, -1.0f); // Spread them out
             XrMatrix4x4f scale;
@@ -2262,6 +2338,8 @@ static void ovrRenderer_RenderFrame(
 
     ovrFramebuffer_SetNone();
 }
+
+
 
 
 
