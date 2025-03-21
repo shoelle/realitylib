@@ -1,5 +1,79 @@
-// Top-level build file where you can add configuration options common to all sub-projects/modules.
-plugins {
-    id 'com.android.application' version '8.2.2' apply false
-    id 'com.android.library' version '8.2.2' apply false
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:7.0.3"
+    }
 }
+
+repositories {
+    google()
+    mavenCentral()
+}
+
+apply plugin: 'com.android.application'
+// Updates a file during compilation
+// Used to replace instances of 'com.raylib.raymob'
+
+android {
+    compileSdk 33
+
+    defaultConfig {
+        minSdk 29
+        targetSdk 33
+
+        applicationId "com.raylib.raymob"
+        versionCode 1
+        versionName "1.0"
+
+
+        // Give to CMake the name of the library
+        externalNativeBuild {
+            ndk {
+                abiFilters 'arm64-v8a'
+            }
+            ndkBuild {
+                abiFilters 'arm64-v8a'
+            }
+            cmake {
+                targets "raymob"
+            }
+        }
+
+    }
+
+    buildTypes {
+        debug {
+            debuggable true
+            jniDebuggable true
+        }
+        release {
+            debuggable false
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path file('src/main/CMakeLists.txt')
+            version '3.22.1'
+        }
+    }
+    buildFeatures {
+        prefab true
+    }
+}
+
+// Add your project's dependencies here.
+// This section is used to include external libraries or modules that your project relies on.
+// These dependencies will be automatically downloaded and integrated into the build process.
+// To add a new dependency, use the 'implementation' or 'api' keyword followed by the library's coordinate or name.
+
+dependencies {
+  // Package/application AndroidManifest.xml properties, plus headers and libraries
+  // exposed to CMake
+  implementation 'org.khronos.openxr:openxr_loader_for_android:1.1.40'
+}
+
+
