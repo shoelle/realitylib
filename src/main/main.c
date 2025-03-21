@@ -26,15 +26,33 @@ Authors   :
 *************************************************************************************/
 
 #include <raylib.h>
+#include <android/asset_manager.h>
+#include <android/log.h>
+
+Sound mySound;
+
+float speed = 0.1f;
+Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 
 /**
  * This is the main entry point of a native application that is using
  * android_native_app_glue.  It runs in its own thread, with its own
  * event loop for receiving input events and doing other things.
  */
-float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 void android_main(struct android_app* app) {
+    InitAudioDevice();
+    AAssetManager* assetManager = app->activity->assetManager;
+    AAsset* asset = AAssetManager_open(assetManager, "audio.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        mySound = LoadSoundFromWave(wave);
+        UnloadWave(wave);
+        AAsset_close(asset);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open audio.wav");
+    }
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
@@ -42,6 +60,7 @@ void android_main(struct android_app* app) {
         inLoop(app);
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
+            PlaySound(mySound);
         }
         if (IsVRButtonPressed(2)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
@@ -62,5 +81,7 @@ void android_main(struct android_app* app) {
         //DrawVRCylinder(v, (Vector3){0.0f, -1.0f, 0.0f}, 0.1f, 1.0f);
         EndVRMode();
     }
+    UnloadSound(mySound);
+    CloseAudioDevice();
     CloseApp(app);
 }
