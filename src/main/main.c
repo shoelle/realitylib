@@ -29,7 +29,9 @@ Authors   :
 #include <android/asset_manager.h>
 #include <android/log.h>
 
-Sound mySound;
+Sound backgroundSound;
+Sound interactionSound1;
+Sound interactionSound2;
 
 float speed = 0.1f;
 Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
@@ -42,32 +44,77 @@ Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 void android_main(struct android_app* app) {
     InitAudioDevice();
     AAssetManager* assetManager = app->activity->assetManager;
-    AAsset* asset = AAssetManager_open(assetManager, "audio.wav", AASSET_MODE_BUFFER);
+
+    AAsset* asset = AAssetManager_open(assetManager, "testingBackgroundMusic.wav", AASSET_MODE_BUFFER);
     if (asset != NULL) {
         const void* buffer = AAsset_getBuffer(asset);
         int dataSize = AAsset_getLength(asset);
         Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
-        mySound = LoadSoundFromWave(wave);
+        backgroundSound = LoadSoundFromWave(wave);
+        if (IsSoundReady(backgroundSound)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded testingBackgroundMusic.wav");
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load testingBackgroundMusic.wav");
+        }
         UnloadWave(wave);
         AAsset_close(asset);
-    } else {
-        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open audio.wav");
     }
+
+    asset = AAssetManager_open(assetManager, "testingInteractionSound1.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        interactionSound1 = LoadSoundFromWave(wave);
+        if (IsSoundReady(interactionSound1)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded testingInteractionSound1.wav");
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    }
+    asset = AAssetManager_open(assetManager, "testingInteractionSound2.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        interactionSound2 = LoadSoundFromWave(wave);
+        if (IsSoundReady(interactionSound2)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded testingInteractionSound2.wav");
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    }
+
     InitApp(app);
+    static bool wasLeftTriggerPressed = false;
     while(!AppShouldClose(app)){
+        if (IsSoundReady(backgroundSound) && !IsSoundPlaying(backgroundSound)) {
+            PlaySound(backgroundSound);
+        }
         BeginVRMode();
         SyncControllers();
         inLoop(app);
+
+        //Left trigger (index 0)
+        if (IsVRButtonPressed(0)) {
+            if (!wasLeftTriggerPressed && IsSoundReady(interactionSound1)) {
+                PlaySound(interactionSound1);
+            }
+            wasLeftTriggerPressed = true;
+        } else {
+            wasLeftTriggerPressed = false;
+        }
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
-            PlaySound(mySound);
+            if (IsSoundReady(interactionSound2)) {
+                PlaySound(interactionSound2);
+            }
         }
-        if (IsVRButtonPressed(2)) {
-            setVRControllerVibration(1, 3000, 0.5, -1);
+        //Right trigger (index 1)
+        if (IsVRButtonPressed(1) && IsSoundReady(interactionSound2)) {
+            PlaySound(interactionSound2);
         }
-        if (IsVRButtonPressed(3)) {
-            setVRControllerVibration(1, 3000, 0.5, -1);
-        }
+
         DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
         for(int i = 0; i < 20; i++){
             DrawVRCuboid((Vector3){i * 0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f*i, .02f * i});
@@ -81,7 +128,9 @@ void android_main(struct android_app* app) {
         //DrawVRCylinder(v, (Vector3){0.0f, -1.0f, 0.0f}, 0.1f, 1.0f);
         EndVRMode();
     }
-    UnloadSound(mySound);
+    UnloadSound(backgroundSound);
+    UnloadSound(interactionSound1);
+    UnloadSound(interactionSound2);
     CloseAudioDevice();
     CloseApp(app);
 }
