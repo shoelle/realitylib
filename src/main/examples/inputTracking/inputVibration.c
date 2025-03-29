@@ -18,34 +18,58 @@
  */
 /************************************************************************************
 
-Filename  : cuboidCreation.c
-Content   : This sample constructs 20 cuboids.
+Filename  : inputVibration.c
+Content   : This samples allows 4 inputs on the Quest3 Controllers to vibrate when pressed.
 Created   :
 Authors   :
 
 *************************************************************************************/
 
 #include <raylib.h>
-#include <android/log.h>
-
-float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 
 /**
  * This is the main entry point of a native application that is using
  * android_native_app_glue.  It runs in its own thread, with its own
  * event loop for receiving input events and doing other things.
  */
-void android_main(struct android_app* app) {
+//0 - L trigger
+//1 - R trigger
+//2 - X button
+//3 - A button
+//4 - L squeeze
+//5 - R squeeze
+//6 - L trigger value?
+//7 - R trigger value?
+//8 - L thumbstick
+//9 - R thumbstick
+//10 - L thumbstick click
+//11 - R thumbstick click
+//12 - Y button
+//13 - B button
+//14 - L haptic output??
+//15 - R haptic output??
+//16 - L aim pose
+//17 - R aim pose
+//18 - L grip pose
+//19 - R grip pose
 
+void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
         SyncControllers();
         inLoop(app);
-
-        for(int i = 0; i < 20; i++){
-            DrawVRCuboid((Vector3){i * 0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f*i, .02f * i});
+        if (IsVRButtonPressed(0)) {
+            setVRControllerVibration(0, 3000, 0.5, -1);
+        }
+        if (IsVRButtonPressed(1)) {
+            setVRControllerVibration(1, 3000, 0.5, -1);
+        }
+        if (IsVRButtonPressed(2)) {
+            setVRControllerVibration(0, 3000, 0.5, -1);
+        }
+        if (IsVRButtonPressed(3)) {
+            setVRControllerVibration(1, 3000, 0.5, -1);
         }
         EndVRMode();
     }

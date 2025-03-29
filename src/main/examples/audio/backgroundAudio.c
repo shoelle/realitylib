@@ -18,18 +18,20 @@
  */
 /************************************************************************************
 
-Filename  : cuboidCreation.c
-Content   : This sample constructs 20 cuboids.
-Created   :
+Filename  : interactionAudio.c
+Content   : This is a sample main.c file which plays a background audio looped upon starting
+Created   : 3/29/2025
 Authors   :
 
 *************************************************************************************/
 
 #include <raylib.h>
+#include <android/asset_manager.h>
 #include <android/log.h>
 
+Sound backgroundSound;
+
 float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 
 /**
  * This is the main entry point of a native application that is using
@@ -37,17 +39,36 @@ Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
  * event loop for receiving input events and doing other things.
  */
 void android_main(struct android_app* app) {
+    InitAudioDevice();
+    AAssetManager* assetManager = app->activity->assetManager;
+
+    AAsset* asset = AAssetManager_open(assetManager, "testingBackgroundMusic.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        backgroundSound = LoadSoundFromWave(wave);
+        if (IsSoundReady(backgroundSound)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded testingBackgroundMusic.wav");
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load testingBackgroundMusic.wav");
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    }
 
     InitApp(app);
+    static bool wasLeftTriggerPressed = false;
     while(!AppShouldClose(app)){
+        if (IsSoundReady(backgroundSound) && !IsSoundPlaying(backgroundSound)) {
+            PlaySound(backgroundSound);
+        }
         BeginVRMode();
         SyncControllers();
         inLoop(app);
-
-        for(int i = 0; i < 20; i++){
-            DrawVRCuboid((Vector3){i * 0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f*i, .02f * i});
-        }
         EndVRMode();
     }
+    UnloadSound(backgroundSound);
+    CloseAudioDevice();
     CloseApp(app);
 }
