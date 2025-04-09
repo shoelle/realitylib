@@ -1581,6 +1581,7 @@ typedef struct {
     ovrProgram Program;
     ovrGeometry GroundPlane;
     ovrGeometry Box;
+    ovrGeometry Cubes[20];
     ovrTrackedController TrackedController[4]; // left aim, left grip, right aim, right grip
 
     ovrSwapChain CubeMapSwapChain;
@@ -1601,6 +1602,9 @@ static void ovrScene_Clear(ovrScene* scene) {
     ovrProgram_Clear(&scene->Program);
     ovrGeometry_Clear(&scene->GroundPlane);
     ovrGeometry_Clear(&scene->Box);
+    for (int i = 0; i < 20; i++) {
+        ovrGeometry_Clear(&scene->Cubes[i]);
+    }
     for (int i = 0; i < 4; i++) {
         ovrTrackedController_Clear(&scene->TrackedController[i]);
     }
@@ -1633,6 +1637,9 @@ static void ovrScene_CreateVAOs(ovrScene* scene) {
     if (!scene->CreatedVAOs) {
         ovrGeometry_CreateVAO(&scene->GroundPlane);
         ovrGeometry_CreateVAO(&scene->Box);
+        for (int i = 0; i < 20; i++) {
+            ovrGeometry_CreateVAO(&scene->Cubes[i]);
+        }
         scene->CreatedVAOs = true;
     }
 }
@@ -1645,6 +1652,20 @@ static void ovrScene_DestroyVAOs(ovrScene* scene) {
     }
 }
 
+ovrScene* outScene;
+bool runOnce = false;
+
+void
+temporary() {
+    if (!runOnce) {
+        for (int i = 0; i < 20; i++) {
+            ovrGeometry_CreateBox(&outScene->Cubes[i]);
+        }
+        ovrScene_CreateVAOs(outScene);
+        runOnce = true;
+    }
+}
+
 static void
 ovrScene_Create(AAssetManager* amgr, XrInstance instance, XrSession session, ovrScene* scene) {
     // Simple ground plane and box geometry.
@@ -1652,8 +1673,11 @@ ovrScene_Create(AAssetManager* amgr, XrInstance instance, XrSession session, ovr
         ovrProgram_Create(&scene->Program, VERTEX_SHADER, FRAGMENT_SHADER);
         ovrGeometry_CreateGroundPlane(&scene->GroundPlane);
         ovrGeometry_CreateBox(&scene->Box);
-
-        ovrScene_CreateVAOs(scene);
+//        for (int i = 0; i < 20; i++) {
+//            ovrGeometry_CreateBox(&scene->Cubes[i]);
+//        }
+        outScene = scene;
+//        ovrScene_CreateVAOs(scene);
     }
 
     // Simple cubemap loaded from ktx file on the sdcard. NOTE: Currently only
@@ -2139,7 +2163,10 @@ void InitCube(ovrGeometry* cube, float color[3]) {
 
     // Store the number of indices
     cube->IndexCount = sizeof(indices) / sizeof(indices[0]);
+    cube->VertexCount = 8;
+    cube->IndexCount = 36;
 
+    // TODO: FIX PROBLEM HERE
     // Generate and bind VAO
     glGenVertexArrays(1, &cube->VertexArrayObject);
     glBindVertexArray(cube->VertexArrayObject);
@@ -2179,7 +2206,7 @@ typedef struct {
 } ArrayList;
 
 void initArrayList(ArrayList* list, size_t initialCapacity) {
-    list->array = (renderingObject*)malloc(initialCapacity * sizeof(renderingObject));  // Allocate memory
+    list->array = (renderingObject*) malloc(initialCapacity * sizeof(renderingObject));  // Allocate memory
     list->size = 0;  // No elements initially
     list->capacity = initialCapacity;  // Set initial capacity
 }
@@ -2219,28 +2246,31 @@ void freeArrayList(ArrayList* list) {
     list->array = NULL;  // Set the pointer to NULL
     list->size = 0;  // Reset size
     list->capacity = 0;  // Reset capacity
+    free(list);
 }
 
 ArrayList* allObjects;
 
-
+ovrGeometry sceneCube;
+bool done = false;
 void DrawVRCuboid(Vector3 pos, Vector3 size, Vector3 colorVector){
-        float color[3];
-        color[0] = colorVector.x;
-        color[1] = colorVector.y;
-        color[2] = colorVector.z;
-        ovrGeometry sceneCube;
-        InitCube(&sceneCube, color);
-        XrMatrix4x4f pose;
-        XrMatrix4x4f_CreateTranslation(&pose, pos.x, pos.y, pos.z); // Spread them out
-        XrMatrix4x4f scale;
-        XrMatrix4x4f_CreateScale(&scale, size.x, size.y, size.z); // Small cubes
-        XrMatrix4x4f model;
-        XrMatrix4x4f_Multiply(&model, &pose, &scale);
-        renderingObject obj;
-        obj.model = model;
-        obj.objType = sceneCube;
-        addToArrayList(allObjects, obj);
+//        float color[3];
+//        color[0] = colorVector.x;
+//        color[1] = colorVector.y;
+//        color[2] = colorVector.z;
+//        if (!done) {
+//            InitCube(&sceneCube, color);
+//        }
+//        XrMatrix4x4f pose;
+//        XrMatrix4x4f_CreateTranslation(&pose, pos.x, pos.y, pos.z); // Spread them out
+//        XrMatrix4x4f scale;
+//        XrMatrix4x4f_CreateScale(&scale, size.x, size.y, size.z); // Small cubes
+//        XrMatrix4x4f model;
+//        XrMatrix4x4f_Multiply(&model, &pose, &scale);
+//        renderingObject obj;
+//        obj.model = model;
+//        obj.objType = sceneCube;
+//        addToArrayList(allObjects, obj);
 }
 
 static void ovrRenderer_RenderFrame(
@@ -2286,13 +2316,30 @@ static void ovrRenderer_RenderFrame(
         GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
         GL(glBindVertexArray(scene->GroundPlane.VertexArrayObject));
         GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
+
         for (int i = 0; i < allObjects->size; i++) { // Render 5 cubes
             glUniformMatrix4fv(
                     scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &getFromArrayList(allObjects, i)->model.m[0]);
 
-            GL(glBindVertexArray(getFromArrayList(allObjects, i)->objType.VertexArrayObject));
-            GL(glDrawElements(GL_TRIANGLES, getFromArrayList(allObjects, i)->objType.IndexCount, GL_UNSIGNED_SHORT, NULL));
+//            GL(glBindVertexArray(getFromArrayList(allObjects, i)->objType.VertexArrayObject));
+//            GL(glDrawElements(GL_TRIANGLES, getFromArrayList(allObjects, i)->objType.IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
+        for (int i = 0; i < 20; i++) {
+            XrMatrix4x4f pose;
+            XrPosef temp = scene->TrackedController[2].Pose;
+            XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
+            temp.position = posVec;
+            XrMatrix4x4f_CreateFromRigidTransform(&pose, &temp);
+            XrMatrix4x4f scale;
+            XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
+            XrMatrix4x4f model;
+            XrMatrix4x4f_Multiply(&model, &pose, &scale);
+            glUniformMatrix4fv(
+                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+            GL(glBindVertexArray(scene->Cubes[i].VertexArrayObject));
+            GL(glDrawElements(GL_TRIANGLES, scene->Cubes[i].IndexCount, GL_UNSIGNED_SHORT, NULL));
+        }
+
         glUniformMatrix4fv(
                 scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &modelMatrix.m[0]);
 
@@ -3712,8 +3759,11 @@ int InitVRController() {
     rightControllerGripSpace = XR_NULL_HANDLE;
     return 0;
 }
+//TODO: move to top
+struct android_app *storedApp;
 
 void InitApp(struct android_app *app) {
+    storedApp = app;
     ALOGV("----------------------------------------------------------------");
     ALOGV("android_app_entry()");
     ALOGV("    android_main()");
@@ -3939,128 +3989,6 @@ Vector2 GetThumbstickAxisMovement(int controller) {
     return vec;
 }
 
-void inLoop(struct android_app *app) {
-    // Read all pending events.
-    for (;;) {
-        int events;
-        struct android_poll_source *source;
-        // If the timeout is zero, returns immediately without blocking.
-        // If the timeout is negative, waits indefinitely until an event appears.
-        const int timeoutMilliseconds =
-                (appState.Resumed == false && appState.SessionActive == false &&
-                 app->destroyRequested == 0)
-                ? -1
-                : 0;
-        if (ALooper_pollAll(timeoutMilliseconds, NULL, &events, (void **) &source) < 0) {
-            break;
-        }
-
-        // Process this event.
-        if (source != NULL) {
-            source->process(app, source);
-        }
-    }
-
-    ovrApp_HandleXrEvents(&appState);
-
-    // Create the scene if not yet created.
-    // The scene is created here to be able to show a loading icon.
-    if (!ovrScene_IsCreated(&appState.Scene)) {
-        ALOGV("Creating Scene\n");
-        ovrScene_Create(
-                app->activity->assetManager, appState.Instance, appState.Session,
-                &appState.Scene);
-    }
-
-    if (stageBoundsDirty) {
-        UpdateStageBounds(&appState);
-        stageBoundsDirty = false;
-    }
-
-    // NOTE: OpenXR does not use the concept of frame indices. Instead,
-    // XrWaitFrame returns the predicted display time.
-
-    // update input information
-
-
-//    // OpenXR input
-//    {
-//        XrActionStateBoolean toggleState = GetActionStateBoolean(toggleAction);
-//        XrActionStateBoolean vibrateLeftState = GetActionStateBoolean(vibrateLeftToggle);
-//        XrActionStateBoolean thumbstickClickState =
-//                GetActionStateBoolean(thumbstickClickAction);
-//
-//        // Update app logic based on input
-//        if (toggleState.changedSinceLastSync) {
-//            // Also stop haptics
-//            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-//            hapticActionInfo.action = vibrateLeftFeedback;
-//            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-//            hapticActionInfo.action = vibrateRightFeedback;
-//            OXR(xrStopHapticFeedback(appState.Session, &hapticActionInfo));
-//        }
-//
-//        if (thumbstickClickState.changedSinceLastSync &&
-//            thumbstickClickState.currentState == XR_TRUE) {
-//            float currentRefreshRate = 0.0f;
-//            OXR(appState.pfnGetDisplayRefreshRate(appState.Session, &currentRefreshRate));
-//            ALOGV("Current Display Refresh Rate: %f", currentRefreshRate);
-//
-//            const int requestedRateIndex = appState.RequestedDisplayRefreshRateIndex++ %
-//                                           appState.NumSupportedDisplayRefreshRates;
-//
-//            const float requestRefreshRate =
-//                    appState.SupportedDisplayRefreshRates[requestedRateIndex];
-//            ALOGV("Requesting Display Refresh Rate: %f", requestRefreshRate);
-//            OXR(appState.pfnRequestDisplayRefreshRate(appState.Session, requestRefreshRate));
-//        }
-//
-//        // The KHR simple profile doesn't have these actions, so the getters will fail
-//        // and flood the log with errors.
-//        if (useSimpleProfile == false) {
-//            XrActionStateFloat moveXState = GetActionStateFloat(moveOnXAction);
-//            XrActionStateFloat moveYState = GetActionStateFloat(moveOnYAction);
-//            if (moveXState.changedSinceLastSync) {
-//                appQuadPositionX = moveXState.currentState;
-//            }
-//            if (moveYState.changedSinceLastSync) {
-//                appQuadPositionY = moveYState.currentState;
-//            }
-//
-//            XrActionStateVector2f moveJoystickState =
-//                    GetActionStateVector2(moveOnJoystickAction);
-//            if (moveJoystickState.changedSinceLastSync) {
-//                appCylPositionX = moveJoystickState.currentState.x;
-//                appCylPositionY = moveJoystickState.currentState.y;
-//            }
-//        }
-//
-//        // Haptics
-//        // NOTE: using the values from the example in the spec
-//        if (vibrateLeftState.changedSinceLastSync && vibrateLeftState.currentState) {
-//            ALOGV("Firing Haptics on L ... ");
-//            // fire haptics using output action
-//            XrHapticVibration vibration = {XR_TYPE_HAPTIC_VIBRATION};
-//            vibration.amplitude = 0.5;
-//            vibration.duration = ToXrTime(0.5); // half a second
-//            vibration.frequency = 3000;
-//            XrHapticActionInfo hapticActionInfo = {XR_TYPE_HAPTIC_ACTION_INFO};
-//            hapticActionInfo.action = vibrateLeftFeedback;
-//            OXR(xrApplyHapticFeedback(
-//                    appState.Session, &hapticActionInfo,
-//                    (const XrHapticBaseHeader *) &vibration));
-//        }
-//    }
-
-
-
-    // Set-up the compositor layers for this frame.
-    // NOTE: Multiple independent layers are allowed, but they need to be added
-    // in a depth consistent order.
-
-    // Compose the layers for this frame.
-}
-
 bool hasCubeMapBackground;
 bool shouldRenderWorldLayer;
 ovrSceneMatrices sceneMatrices;
@@ -4138,6 +4066,43 @@ void BeginVRMode(void) {
     memset(appState.Layers, 0, sizeof(ovrCompositorLayer_Union) * ovrMaxLayerCount);
     shouldRenderWorldLayer = true;
     hasCubeMapBackground = appState.Scene.CubeMapSwapChain.Handle != XR_NULL_HANDLE;
+
+    // Read all pending events.
+    for (;;) {
+        int events;
+        struct android_poll_source *source;
+        // If the timeout is zero, returns immediately without blocking.
+        // If the timeout is negative, waits indefinitely until an event appears.
+        const int timeoutMilliseconds =
+                (appState.Resumed == false && appState.SessionActive == false &&
+                 storedApp->destroyRequested == 0)
+                ? -1
+                : 0;
+        if (ALooper_pollAll(timeoutMilliseconds, NULL, &events, (void **) &source) < 0) {
+            break;
+        }
+
+        // Process this event.
+        if (source != NULL) {
+            source->process(storedApp, source);
+        }
+    }
+
+    ovrApp_HandleXrEvents(&appState);
+
+    // Create the scene if not yet created.
+    // The scene is created here to be able to show a loading icon.
+    if (!ovrScene_IsCreated(&appState.Scene)) {
+        ALOGV("Creating Scene\n");
+        ovrScene_Create(
+                storedApp->activity->assetManager, appState.Instance, appState.Session,
+                &appState.Scene);
+    }
+
+    if (stageBoundsDirty) {
+        UpdateStageBounds(&appState);
+        stageBoundsDirty = false;
+    }
 }
 
 //helper for DrawVRBackground
