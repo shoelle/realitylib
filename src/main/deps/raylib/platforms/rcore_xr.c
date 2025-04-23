@@ -1576,12 +1576,22 @@ enum ovrBackgroundType {
 };
 
 typedef struct {
+    int numObjects;
+    int arraySize;
+    ovrGeometry* Objects;
+} objArray;
+
+typedef struct {
+    // move up to application layer?
     bool CreatedScene;
     bool CreatedVAOs;
     ovrProgram Program;
     ovrGeometry GroundPlane;
     ovrGeometry Box;
-    ovrGeometry Cubes[20];
+    ovrGeometry Cubes[50];
+    int created_cubes;
+    int last_tracked;
+    objArray Objects;
     ovrTrackedController TrackedController[4]; // left aim, left grip, right aim, right grip
 
     ovrSwapChain CubeMapSwapChain;
@@ -1602,8 +1612,11 @@ static void ovrScene_Clear(ovrScene* scene) {
     ovrProgram_Clear(&scene->Program);
     ovrGeometry_Clear(&scene->GroundPlane);
     ovrGeometry_Clear(&scene->Box);
-    for (int i = 0; i < 20; i++) {
+    for (int i = 0; i < 50; i++) {
         ovrGeometry_Clear(&scene->Cubes[i]);
+    }
+    for (int i = 0; i < scene->Objects.numObjects; i++) {
+        ovrGeometry_Clear(&scene->Objects.Objects[i]);
     }
     for (int i = 0; i < 4; i++) {
         ovrTrackedController_Clear(&scene->TrackedController[i]);
@@ -1634,12 +1647,13 @@ static bool ovrScene_IsCreated(ovrScene* scene) {
 }
 
 static void ovrScene_CreateVAOs(ovrScene* scene) {
+    for (int i = scene->last_tracked; i < scene->created_cubes; i++) {
+        ovrGeometry_CreateVAO(&scene->Cubes[i]);
+    }
+    scene->last_tracked = scene->created_cubes;
     if (!scene->CreatedVAOs) {
         ovrGeometry_CreateVAO(&scene->GroundPlane);
         ovrGeometry_CreateVAO(&scene->Box);
-        for (int i = 0; i < 20; i++) {
-            ovrGeometry_CreateVAO(&scene->Cubes[i]);
-        }
         scene->CreatedVAOs = true;
     }
 }
@@ -1656,13 +1670,14 @@ ovrScene* outScene;
 bool runOnce = false;
 
 void
-temporary() {
-    if (!runOnce) {
-        for (int i = 0; i < 20; i++) {
-            ovrGeometry_CreateBox(&outScene->Cubes[i]);
+DrawNCubes(int i) {
+    ALOGV("total cubes created so far: %d", outScene->created_cubes);
+    if (outScene->created_cubes < 50) {
+        for (int j = outScene->created_cubes; j < outScene->created_cubes + i; j++) {
+            ovrGeometry_CreateBox(&outScene->Cubes[j]);
         }
+        outScene->created_cubes += i;
         ovrScene_CreateVAOs(outScene);
-        runOnce = true;
     }
 }
 
@@ -1673,11 +1688,8 @@ ovrScene_Create(AAssetManager* amgr, XrInstance instance, XrSession session, ovr
         ovrProgram_Create(&scene->Program, VERTEX_SHADER, FRAGMENT_SHADER);
         ovrGeometry_CreateGroundPlane(&scene->GroundPlane);
         ovrGeometry_CreateBox(&scene->Box);
-//        for (int i = 0; i < 20; i++) {
-//            ovrGeometry_CreateBox(&scene->Cubes[i]);
-//        }
         outScene = scene;
-//        ovrScene_CreateVAOs(scene);
+        outScene->created_cubes = 0;
     }
 
     // Simple cubemap loaded from ktx file on the sdcard. NOTE: Currently only
@@ -2072,6 +2084,9 @@ static void ovrScene_Destroy(ovrScene* scene) {
     ovrProgram_Destroy(&scene->Program);
     ovrGeometry_Destroy(&scene->GroundPlane);
     ovrGeometry_Destroy(&scene->Box);
+    for (int i = 0; i < 50; i++) {
+        ovrGeometry_Destroy(&scene->Cubes[i]);
+    }
 
     // Cubemap is optional
     if (scene->CubeMapSwapChain.Handle != XR_NULL_HANDLE) {
@@ -2136,63 +2151,6 @@ typedef struct {
     XrMatrix4x4f ProjectionMatrix[ovrMaxNumEyes];
 } ovrSceneMatrices;
 
-void InitCube(ovrGeometry* cube, float color[3]) {
-    // Cube vertices: Position (X, Y, Z)
-    float vertices[] = {
-            // Front face
-            -0.5f, -0.5f,  0.5f,  color[0], color[1], color[2], // Add color to position
-            0.5f, -0.5f,  0.5f,  color[0], color[1], color[2],
-            0.5f,  0.5f,  0.5f,  color[0], color[1], color[2],
-            -0.5f,  0.5f,  0.5f,  color[0], color[1], color[2],
-            // Back face
-            -0.5f, -0.5f, -0.5f,  color[0], color[1], color[2],
-            0.5f, -0.5f, -0.5f,  color[0], color[1], color[2],
-            0.5f,  0.5f, -0.5f,  color[0], color[1], color[2],
-            -0.5f,  0.5f, -0.5f,  color[0], color[1], color[2]
-    };
-
-    // Index buffer (Two triangles per face, 6 faces)
-    unsigned short indices[] = {
-            0, 1, 2,  2, 3, 0,  // Front
-            1, 5, 6,  6, 2, 1,  // Right
-            5, 4, 7,  7, 6, 5,  // Back
-            4, 0, 3,  3, 7, 4,  // Left
-            3, 2, 6,  6, 7, 3,  // Top
-            4, 5, 1,  1, 0, 4   // Bottom
-    };
-
-    // Store the number of indices
-    cube->IndexCount = sizeof(indices) / sizeof(indices[0]);
-    cube->VertexCount = 8;
-    cube->IndexCount = 36;
-
-    // TODO: FIX PROBLEM HERE
-    // Generate and bind VAO
-    glGenVertexArrays(1, &cube->VertexArrayObject);
-    glBindVertexArray(cube->VertexArrayObject);
-
-    // Generate and bind VBO
-    glGenBuffers(1, &cube->VertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, cube->VertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    // Generate and bind IBO (Index Buffer Object)
-    glGenBuffers(1, &cube->IndexBuffer);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, cube->IndexBuffer);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    // Define vertex attributes (position + color)
-    // Position attribute (location 0)
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-
-    // Color attribute (location 1)
-    glEnableVertexAttribArray(1);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-
-    // Unbind VAO
-    glBindVertexArray(0);
-}
 
 typedef struct{
     ovrGeometry objType;
@@ -2253,25 +2211,6 @@ ArrayList* allObjects;
 
 ovrGeometry sceneCube;
 bool done = false;
-void DrawVRCuboid(Vector3 pos, Vector3 size, Vector3 colorVector){
-//        float color[3];
-//        color[0] = colorVector.x;
-//        color[1] = colorVector.y;
-//        color[2] = colorVector.z;
-//        if (!done) {
-//            InitCube(&sceneCube, color);
-//        }
-//        XrMatrix4x4f pose;
-//        XrMatrix4x4f_CreateTranslation(&pose, pos.x, pos.y, pos.z); // Spread them out
-//        XrMatrix4x4f scale;
-//        XrMatrix4x4f_CreateScale(&scale, size.x, size.y, size.z); // Small cubes
-//        XrMatrix4x4f model;
-//        XrMatrix4x4f_Multiply(&model, &pose, &scale);
-//        renderingObject obj;
-//        obj.model = model;
-//        obj.objType = sceneCube;
-//        addToArrayList(allObjects, obj);
-}
 
 static void ovrRenderer_RenderFrame(
         ovrRenderer* renderer,
@@ -2317,14 +2256,14 @@ static void ovrRenderer_RenderFrame(
         GL(glBindVertexArray(scene->GroundPlane.VertexArrayObject));
         GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
 
-        for (int i = 0; i < allObjects->size; i++) { // Render 5 cubes
-            glUniformMatrix4fv(
-                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &getFromArrayList(allObjects, i)->model.m[0]);
+//        for (int i = 0; i < allObjects->size; i++) { // Render 5 cubes
+//            glUniformMatrix4fv(
+//                    scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &getFromArrayList(allObjects, i)->model.m[0]);
 
 //            GL(glBindVertexArray(getFromArrayList(allObjects, i)->objType.VertexArrayObject));
 //            GL(glDrawElements(GL_TRIANGLES, getFromArrayList(allObjects, i)->objType.IndexCount, GL_UNSIGNED_SHORT, NULL));
-        }
-        for (int i = 0; i < 20; i++) {
+//        }
+        for (int i = 0; i < 50; i++) {
             XrMatrix4x4f pose;
             XrPosef temp = scene->TrackedController[2].Pose;
             XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
@@ -3966,7 +3905,7 @@ Vector3 GetVRPosition(int controller) {
     }
     XrPosef pose =  appState.Scene.TrackedController[controller * 2 + POSE_TYPE].Pose;
     Vector3 v = {pose.position.x, pose.position.y, pose.position.z};
-    ALOGV("TEST: position of right controller is %f %f %f\n", v.x, v.y, v.z);
+//    ALOGV("TEST: position of right controller is %f %f %f\n", v.x, v.y, v.z);
     return v;
 }
 

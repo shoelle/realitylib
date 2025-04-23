@@ -1262,7 +1262,7 @@ RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float 
 RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 RLAPI void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height);
 RLAPI void DrawVRCuboid(Vector3 pos, Vector3 scale, Vector3 color);
-RLAPI void temporary();
+RLAPI void DrawNCubes(int i);
 RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
 RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle

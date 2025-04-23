@@ -38,7 +38,8 @@ void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
-        temporary();
+        DrawNCubes(10);
+        DrawNCubes(40);
         SyncControllers();
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
