@@ -18,48 +18,35 @@
  */
 /************************************************************************************
 
-Filename  : XrCompositor_NativeActivity.c
-Content   : This sample uses the Android NativeActivity class.
+Filename  : cuboidCreation.c
+Content   : This sample constructs 20 cuboids.
 Created   :
 Authors   :
 
 *************************************************************************************/
 
 #include <raylib.h>
+#include <android/log.h>
+
+float speed = 0.1f;
+Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 
 /**
  * This is the main entry point of a native application that is using
  * android_native_app_glue.  It runs in its own thread, with its own
  * event loop for receiving input events and doing other things.
  */
-float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 void android_main(struct android_app* app) {
+
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
         SyncControllers();
         inLoop(app);
-        if (IsVRButtonPressed(1)) {
-            setVRControllerVibration(1, 3000, 0.5, -1);
-        }
-        if (IsVRButtonPressed(2)) {
-            setVRControllerVibration(1, 3000, 0.5, -1);
-        }
-        if (IsVRButtonPressed(3)) {
-            setVRControllerVibration(1, 3000, 0.5, -1);
-        }
-        DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
+
         for(int i = 0; i < 20; i++){
             DrawVRCuboid((Vector3){i * 0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f*i, .02f * i});
         }
-        if (IsVRButtonDown(1)) {
-            //DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
-        }
-        struct Vector2 rJoystickVec = GetThumbstickAxisMovement(1);
-        selfLoc = (Vector3) {selfLoc.x + rJoystickVec.x * speed, selfLoc.y, selfLoc.z - rJoystickVec.y * speed};
-        Vector3 v = GetVRPosition(1);
-        //DrawVRCylinder(v, (Vector3){0.0f, -1.0f, 0.0f}, 0.1f, 1.0f);
         EndVRMode();
     }
     CloseApp(app);
