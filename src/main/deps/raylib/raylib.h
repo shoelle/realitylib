@@ -1033,6 +1033,9 @@ RLAPI void BeginVrStereoMode(VrStereoConfig config);              // Begin stere
 RLAPI void EndVrStereoMode(void);                                 // End stereo rendering (requires VR simulator)
 RLAPI void BeginVRMode(void);
 RLAPI void EndVRMode(void);
+RLAPI void BeginVRDraw(int eye);
+RLAPI void EndVRDraw(int eye);
+RLAPI void doDrawCubes();
 
 // VR stereo config functions for VR simulator
 RLAPI VrStereoConfig LoadVrStereoConfig(VrDeviceInfo device);     // Load VR stereo config for VR simulator device parameters
@@ -1262,7 +1265,7 @@ RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float 
 RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 RLAPI void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height);
 RLAPI void DrawVRCuboid(Vector3 pos, Vector3 scale, Vector3 color);
-RLAPI void DrawNCubes(int i);
+RLAPI void DrawVRCube(Vector3 position, float length, Color color);
 RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
 RLAPI void DrawRectangleRec(Rectangle rec, Color color);                                                 // Draw a color-filled rectangle

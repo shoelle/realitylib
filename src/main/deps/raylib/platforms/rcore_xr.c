@@ -108,6 +108,8 @@ typedef union {
 
 enum { ovrMaxLayerCount = 16 };
 enum { ovrMaxNumEyes = 2 };
+int numObjects = 2;
+struct ovrApp;
 
 // Forward declarations
 XrInstance ovrApp_GetInstance();
@@ -1607,12 +1609,13 @@ typedef struct {
 } ovrScene;
 
 static void ovrScene_Clear(ovrScene* scene) {
+    scene->created_cubes = 0;
     scene->CreatedScene = false;
     scene->CreatedVAOs = false;
     ovrProgram_Clear(&scene->Program);
     ovrGeometry_Clear(&scene->GroundPlane);
     ovrGeometry_Clear(&scene->Box);
-    for (int i = 0; i < 50; i++) {
+    for (int i = 0; i < numObjects; i++) {
         ovrGeometry_Clear(&scene->Cubes[i]);
     }
     for (int i = 0; i < scene->Objects.numObjects; i++) {
@@ -1667,16 +1670,12 @@ static void ovrScene_DestroyVAOs(ovrScene* scene) {
 }
 
 ovrScene* outScene;
-bool runOnce = false;
 
 void
-DrawNCubes(int i) {
+DrawVRCube(Vector3 position, float length, Color color) {
     ALOGV("total cubes created so far: %d", outScene->created_cubes);
-    if (outScene->created_cubes < 50) {
-        for (int j = outScene->created_cubes; j < outScene->created_cubes + i; j++) {
-            ovrGeometry_CreateBox(&outScene->Cubes[j]);
-        }
-        outScene->created_cubes += i;
+    if (outScene->created_cubes < numObjects) {
+        ovrGeometry_CreateBox(&outScene->Cubes[outScene->created_cubes++]);
         ovrScene_CreateVAOs(outScene);
     }
 }
@@ -2263,7 +2262,7 @@ static void ovrRenderer_RenderFrame(
 //            GL(glBindVertexArray(getFromArrayList(allObjects, i)->objType.VertexArrayObject));
 //            GL(glDrawElements(GL_TRIANGLES, getFromArrayList(allObjects, i)->objType.IndexCount, GL_UNSIGNED_SHORT, NULL));
 //        }
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < 20; i++) {
             XrMatrix4x4f pose;
             XrPosef temp = scene->TrackedController[2].Pose;
             XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
@@ -2273,10 +2272,10 @@ static void ovrRenderer_RenderFrame(
             XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
             XrMatrix4x4f model;
             XrMatrix4x4f_Multiply(&model, &pose, &scale);
-            glUniformMatrix4fv(
+            GL(glUniformMatrix4fv(
                     scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
-            GL(glBindVertexArray(scene->Cubes[i].VertexArrayObject));
-            GL(glDrawElements(GL_TRIANGLES, scene->Cubes[i].IndexCount, GL_UNSIGNED_SHORT, NULL));
+            GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
+            GL(glDrawElements(GL_TRIANGLES, scene->Cubes[0].IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
 
         glUniformMatrix4fv(
@@ -4080,7 +4079,7 @@ void DrawVRCubemap() {
 
 //helper for DrawVRBackground
 void AddObjectsToLayer(int xOffset, int yOffset) {
-    ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
+//    ovrRenderer_RenderFrame(&appState.Renderer, &appState.Scene, &sceneMatrices);
 
     XrCompositionLayerProjection projection_layer = {XR_TYPE_COMPOSITION_LAYER_PROJECTION};
     projection_layer.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT |
@@ -4207,7 +4206,6 @@ void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height) {
 }
 
 void EndVRMode(void) {
-
     if (shouldRenderWorldLayer) {
         AddObjectsToLayer(0.0, 0.0);
     }
@@ -4223,4 +4221,83 @@ void EndVRMode(void) {
     endFrameInfo.layers = layers;
 
     OXR(xrEndFrame(appState.Session, &endFrameInfo));
+}
+
+void BeginVRDraw(int eye) {
+    ovrRenderer* renderer = &appState.Renderer;
+    const ovrScene* scene = &appState.Scene;
+    // Let the background layer show through if one is present.
+    float clearAlpha = 1.0f;
+    if (scene->BackGroundType != BACKGROUND_NONE) {
+        clearAlpha = 0.0f;
+    }
+    ovrFramebuffer* frameBuffer = &renderer->FrameBuffer[eye];
+
+    ovrFramebuffer_Acquire(frameBuffer);
+
+    // Set the current framebuffer.
+    ovrFramebuffer_SetCurrent(frameBuffer);
+
+    GL(glUseProgram(scene->Program.Program));
+
+    XrMatrix4x4f modelMatrix;
+    XrMatrix4x4f_CreateIdentity(&modelMatrix);
+    glUniformMatrix4fv(
+            scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &modelMatrix.m[0]);
+    XrMatrix4x4f viewProjMatrix;
+    XrMatrix4x4f_Multiply(
+            &viewProjMatrix,
+            &sceneMatrices.ProjectionMatrix[eye],
+            &sceneMatrices.ViewMatrix[eye]);
+    glUniformMatrix4fv(
+            scene->Program.UniformLocation[VIEW_PROJ_MATRIX], 1, GL_FALSE, &viewProjMatrix.m[0]);
+
+    GL(glEnable(GL_SCISSOR_TEST));
+    GL(glDepthMask(GL_TRUE));
+    GL(glEnable(GL_DEPTH_TEST));
+    GL(glDepthFunc(GL_LEQUAL));
+    GL(glDisable(GL_CULL_FACE));
+    // GL( glCullFace( GL_BACK ) );
+    GL(glViewport(0, 0, frameBuffer->Width, frameBuffer->Height));
+    GL(glScissor(0, 0, frameBuffer->Width, frameBuffer->Height));
+    GL(glClearColor(0.0f, 0.0f, 0.0f, clearAlpha));
+    GL(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL(glBindVertexArray(scene->GroundPlane.VertexArrayObject));
+    GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
+}
+
+void doDrawCubes() {
+    const ovrScene *scene = &appState.Scene;
+    ovrRenderer *renderer = &appState.Renderer;
+    for (int i = 0; i < 20; i++) {
+        XrMatrix4x4f pose;
+        XrPosef temp = scene->TrackedController[2].Pose;
+        XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
+        temp.position = posVec;
+        XrMatrix4x4f_CreateFromRigidTransform(&pose, &temp);
+        XrMatrix4x4f scale;
+        XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
+        XrMatrix4x4f model;
+        XrMatrix4x4f_Multiply(&model, &pose, &scale);
+        GL(glUniformMatrix4fv(
+                scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+                   GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
+        GL(glDrawElements(GL_TRIANGLES, scene->Cubes[0].IndexCount, GL_UNSIGNED_SHORT, NULL));
+    }
+}
+
+void EndVRDraw(int eye) {
+    const ovrScene *scene = &appState.Scene;
+    ovrRenderer *renderer = &appState.Renderer;
+    XrMatrix4x4f modelMatrix;
+    XrMatrix4x4f_CreateIdentity(&modelMatrix);
+    ovrFramebuffer* frameBuffer = &renderer->FrameBuffer[eye];
+    glUniformMatrix4fv(
+            scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &modelMatrix.m[0]);
+
+    GL(glBindVertexArray(0));
+    GL(glUseProgram(0));
+    ovrFramebuffer_Resolve(frameBuffer);
+    ovrFramebuffer_Release(frameBuffer);
+    ovrFramebuffer_SetNone();
 }

@@ -38,8 +38,8 @@ void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
-        DrawNCubes(10);
-        DrawNCubes(40);
+        DrawVRCube((Vector3){1.0f, 2.0f, 3.0f}, 1.0f, (Color){19 ,37, 207, 255});
+//        DrawVRCube(40);
         SyncControllers();
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
@@ -61,6 +61,11 @@ void android_main(struct android_app* app) {
         selfLoc = (Vector3) {selfLoc.x + rJoystickVec.x * speed, selfLoc.y, selfLoc.z - rJoystickVec.y * speed};
         Vector3 v = GetVRPosition(1);
         //DrawVRCylinder(v, (Vector3){0.0f, -1.0f, 0.0f}, 0.1f, 1.0f);
+        for (int eye = 0; eye < 2; eye++) {
+
+            doDrawCubes();
+            EndVRDraw(eye);
+        }
         EndVRMode();
     }
     CloseApp(app);
