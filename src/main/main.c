@@ -38,8 +38,6 @@ void android_main(struct android_app* app) {
     InitApp(app);
     while(!AppShouldClose(app)){
         BeginVRMode();
-        DrawVRCube((Vector3){1.0f, 2.0f, 3.0f}, 1.0f, (Color){19 ,37, 207, 255});
-//        DrawVRCube(40);
         SyncControllers();
         if (IsVRButtonPressed(1)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
@@ -62,8 +60,10 @@ void android_main(struct android_app* app) {
         Vector3 v = GetVRPosition(1);
         //DrawVRCylinder(v, (Vector3){0.0f, -1.0f, 0.0f}, 0.1f, 1.0f);
         for (int eye = 0; eye < 2; eye++) {
-
-            doDrawCubes();
+            BeginVRDraw(eye);
+            DrawVRCuboid((Vector3){0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f, .02f});
+            DrawVRCuboid((Vector3){1.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f, .02f});
+            DrawVRCuboid((Vector3){0.2f, 1.0f, -1.0f}, (Vector3){0.03f, 0.03f, 0.03f}, (Vector3){1.0f ,.05f, .02f});
             EndVRDraw(eye);
         }
         EndVRMode();

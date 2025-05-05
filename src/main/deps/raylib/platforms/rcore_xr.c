@@ -1676,7 +1676,6 @@ DrawVRCube(Vector3 position, float length, Color color) {
     ALOGV("total cubes created so far: %d", outScene->created_cubes);
     if (outScene->created_cubes < numObjects) {
         ovrGeometry_CreateBox(&outScene->Cubes[outScene->created_cubes++]);
-        ovrScene_CreateVAOs(outScene);
     }
 }
 
@@ -1688,6 +1687,7 @@ ovrScene_Create(AAssetManager* amgr, XrInstance instance, XrSession session, ovr
         ovrGeometry_CreateGroundPlane(&scene->GroundPlane);
         ovrGeometry_CreateBox(&scene->Box);
         outScene = scene;
+        ovrScene_CreateVAOs(outScene);
         outScene->created_cubes = 0;
     }
 
@@ -4266,24 +4266,22 @@ void BeginVRDraw(int eye) {
     GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
 }
 
-void doDrawCubes() {
+void DrawVRCuboid(Vector3 pos, Vector3 scaleVec, Vector3 color) {
     const ovrScene *scene = &appState.Scene;
     ovrRenderer *renderer = &appState.Renderer;
-    for (int i = 0; i < 20; i++) {
-        XrMatrix4x4f pose;
-        XrPosef temp = scene->TrackedController[2].Pose;
-        XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
-        temp.position = posVec;
-        XrMatrix4x4f_CreateFromRigidTransform(&pose, &temp);
-        XrMatrix4x4f scale;
-        XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
-        XrMatrix4x4f model;
-        XrMatrix4x4f_Multiply(&model, &pose, &scale);
-        GL(glUniformMatrix4fv(
-                scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
-                   GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
-        GL(glDrawElements(GL_TRIANGLES, scene->Cubes[0].IndexCount, GL_UNSIGNED_SHORT, NULL));
-    }
+    XrMatrix4x4f pose;
+    XrPosef temp;
+    XrVector3f posVec = {pos.x, pos.y, pos.z};
+    XrPosef_CreateIdentity(&temp);
+    temp.position = posVec;
+    XrMatrix4x4f_CreateFromRigidTransform(&pose, &temp);
+    XrMatrix4x4f scale;
+    XrMatrix4x4f_CreateScale(&scale, scaleVec.x, scaleVec.y, scaleVec.z);
+    XrMatrix4x4f model;
+    XrMatrix4x4f_Multiply(&model, &pose, &scale);
+    GL(glUniformMatrix4fv(scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+    GL(glBindVertexArray(scene->Box.VertexArrayObject)));
+    GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
 }
 
 void EndVRDraw(int eye) {
