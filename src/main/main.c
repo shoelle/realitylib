@@ -64,7 +64,7 @@ static Vector3 noteSize = { .3f, .3f, .3f };
 
 static Lane* lanes;
 static const int numNotes = 20;
-static const double noteSpeed = .2f;
+static const double noteSpeed = .1f;
 static const int chanceHold = 10;
 static const int chanceHalf = 5;
 static const int bpm = 138;
@@ -165,11 +165,7 @@ void DrawGameplayState() {
     Vector4 o0 = {0.0f,0.0f,0.0f,1.0f};
     for (int eye = 0; eye < 2; eye++) {
         BeginVRDraw(eye);
-//        DrawVRCuboid((Vector3){0.2f, 0.0f, -1.0f}, o0, (Vector3){0.1f, 0.1f, 0.1f}, (Color){127,255,255,0});
-//        DrawVRCuboid((Vector3){1.2f, 0.0f, -1.0f}, o0, (Vector3){0.1f, 0.1f, 0.1f}, (Color){127,255,255,0});
-//        DrawVRCuboid((Vector3){0.2f, 1.0f, -1.0f}, o0, (Vector3){0.03f, 0.03f, 0.03f}, (Color){127,255,255,0});
 
-        DrawVRCuboid(note.position, o0, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0});
         Vector3 lPos = GetControllerPosition(0);
         Vector4 lOrientation = GetControllerOrientation(0);
         DrawVRCuboid(lPos, lOrientation, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0});
