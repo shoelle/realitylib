@@ -1676,7 +1676,6 @@ DrawVRCube(Vector3 position, float length, Color color) {
     ALOGV("total cubes created so far: %d", outScene->created_cubes);
     if (outScene->created_cubes < numObjects) {
         ovrGeometry_CreateBox(&outScene->Cubes[outScene->created_cubes++]);
-        ovrScene_CreateVAOs(outScene);
     }
 }
 
@@ -1688,6 +1687,7 @@ ovrScene_Create(AAssetManager* amgr, XrInstance instance, XrSession session, ovr
         ovrGeometry_CreateGroundPlane(&scene->GroundPlane);
         ovrGeometry_CreateBox(&scene->Box);
         outScene = scene;
+        ovrScene_CreateVAOs(outScene);
         outScene->created_cubes = 0;
     }
 
@@ -2274,7 +2274,7 @@ static void ovrRenderer_RenderFrame(
             XrMatrix4x4f_Multiply(&model, &pose, &scale);
             GL(glUniformMatrix4fv(
                     scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
-            GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
+                       GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
             GL(glDrawElements(GL_TRIANGLES, scene->Cubes[0].IndexCount, GL_UNSIGNED_SHORT, NULL));
         }
 
@@ -3864,7 +3864,7 @@ float GetVRFloat(int button) {
     return inputState.currentState;
 }
 
-Vector4 GetVROrientation(int controller) {
+Vector4 GetControllerOrientation(int controller) {
     int POSE_TYPE = 0;
     XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
     XrPath subactionPath[] = {leftHandPath, leftHandPath, rightHandPath, rightHandPath};
@@ -3885,7 +3885,7 @@ Vector4 GetVROrientation(int controller) {
     return v;
 }
 
-Vector3 GetVRPosition(int controller) {
+Vector3 GetControllerPosition(int controller) {
     //TODO: fix code duplication here and above
     int POSE_TYPE = 0;
     XrAction controllers[] = {aimPoseAction, gripPoseAction, aimPoseAction, gripPoseAction};
@@ -4266,24 +4266,19 @@ void BeginVRDraw(int eye) {
     GL(glDrawElements(GL_TRIANGLES, scene->GroundPlane.IndexCount, GL_UNSIGNED_SHORT, NULL));
 }
 
-void doDrawCubes() {
+void DrawVRCuboid(Vector3 pos, Vector4 orientation, Vector3 scale, Color color) {
     const ovrScene *scene = &appState.Scene;
     ovrRenderer *renderer = &appState.Renderer;
-    for (int i = 0; i < 20; i++) {
-        XrMatrix4x4f pose;
-        XrPosef temp = scene->TrackedController[2].Pose;
-        XrVector3f posVec = {temp.position.x, temp.position.y + i, temp.position.z};
-        temp.position = posVec;
-        XrMatrix4x4f_CreateFromRigidTransform(&pose, &temp);
-        XrMatrix4x4f scale;
-        XrMatrix4x4f_CreateScale(&scale, 0.03f, 0.03f, 0.03f);
-        XrMatrix4x4f model;
-        XrMatrix4x4f_Multiply(&model, &pose, &scale);
-        GL(glUniformMatrix4fv(
-                scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
-                   GL(glBindVertexArray(scene->Cubes[0].VertexArrayObject)));
-        GL(glDrawElements(GL_TRIANGLES, scene->Cubes[0].IndexCount, GL_UNSIGNED_SHORT, NULL));
-    }
+
+    XrVector3f posV = {pos.x, pos.y, pos.z};
+    XrQuaternionf orientationV = {orientation.x, orientation.y, orientation.z, orientation.w};
+    XrVector3f scaleV = {scale.x, scale.y, scale.z};
+    XrMatrix4x4f model;
+
+    XrMatrix4x4f_CreateTranslationRotationScale(&model, &posV, &orientationV, &scaleV);
+    GL(glUniformMatrix4fv(scene->Program.UniformLocation[MODEL_MATRIX], 1, GL_FALSE, &model.m[0]);
+               GL(glBindVertexArray(scene->Box.VertexArrayObject)));
+    GL(glDrawElements(GL_TRIANGLES, scene->Box.IndexCount, GL_UNSIGNED_SHORT, NULL));
 }
 
 void EndVRDraw(int eye) {

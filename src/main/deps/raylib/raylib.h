@@ -1212,8 +1212,8 @@ RLAPI float GetVRFloat(int button);
 
 RLAPI Vector2 GetThumbstickAxisMovement(int controller);
 
-RLAPI Vector4 GetVROrientation(int controller);
-RLAPI Vector3 GetVRPosition(int controller);
+RLAPI Vector4 GetControllerOrientation(int controller);
+RLAPI Vector3 GetControllerPosition(int controller);
 
 RLAPI void ApplyHapticRight();
 RLAPI void SyncControllers();
@@ -1264,7 +1264,7 @@ RLAPI void DrawEllipseLines(int centerX, int centerY, float radiusH, float radiu
 RLAPI void DrawRing(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color); // Draw ring
 RLAPI void DrawRingLines(Vector2 center, float innerRadius, float outerRadius, float startAngle, float endAngle, int segments, Color color);    // Draw ring outline
 RLAPI void DrawVRQuad(Vector3 position, Vector3 axis, float width, float height);
-RLAPI void DrawVRCuboid(Vector3 pos, Vector3 scale, Vector3 color);
+RLAPI void DrawVRCuboid(Vector3 position, Vector4 orientation, Vector3 scale, Color color);
 RLAPI void DrawVRCube(Vector3 position, float length, Color color);
 RLAPI void DrawRectangle(int posX, int posY, int width, int height, Color color);                        // Draw a color-filled rectangle
 RLAPI void DrawRectangleV(Vector2 position, Vector2 size, Color color);                                  // Draw a color-filled rectangle (Vector version)
