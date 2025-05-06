@@ -60,13 +60,13 @@ static int finishScreen = 0;
 static const int noteWidth = 50;
 static const int noteHeight = 20;
 
-static Vector3 noteSize = { .3f, .3f, .3f };
+static Vector3 noteSize = { .1f, .1f, .1f };
 
 static Lane* lanes;
-static const int numNotes = 20;
+static const int numNotes = 50;
 static const double noteSpeed = .1f;
-static const int chanceHold = 10;
-static const int chanceHalf = 5;
+static const int chanceHold = 0; // 10;
+static const int chanceHalf = 0; // 5;
 static const int bpm = 138;
 static const int numLanes = 4;
 
@@ -110,15 +110,16 @@ void InitGameplayState(void)
 
     for (int i = 0; i < numNotes; i++) {
         int lane = rand() % numLanes;
+        float height = 0.75f + (rand() % 1) / 2.0f;
         if (rand() % chanceHold == 0) {
-            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*2-3.5,0.75f,-(noteGap * i + 5.0f)}, BLUE, 1};
+            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, BLUE, 1};
         }
         else {
-            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*2-3.5,0.75f,-(noteGap * i + 5.0f)}, RED, 0};
+            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, RED, 0};
             lanes[lane].numNotes++;
             if (rand() % chanceHalf == 0) {
                 lane = rand() % numLanes;
-                lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*2-3.5,0.75f,-(noteGap * (i + .5f) + 5.0f)}, RED, 0};
+                lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * (i + .5f) + 5.0f)}, RED, 0};
             }
         }
         lanes[lane].numNotes++;
@@ -167,11 +168,13 @@ void DrawGameplayState() {
         BeginVRDraw(eye);
 
         Vector3 lPos = GetControllerPosition(0);
+        lPos.z -= 0.2;
         Vector4 lOrientation = GetControllerOrientation(0);
-        DrawVRCuboid(lPos, lOrientation, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0});
+        DrawVRCuboid(lPos, lOrientation, (Vector3){0.02f,0.02f,0.4f}, (Color){127,255,255,0});
         Vector3 rPos = GetControllerPosition(1);
         Vector4 rOrientation = GetControllerOrientation(1);
-        DrawVRCuboid(rPos, rOrientation, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0});
+        rPos.z -= 0.2;
+        DrawVRCuboid(rPos, rOrientation, (Vector3){0.02f,0.02f,0.4f}, (Color){127,255,255,0});
 //        for (int i = 0; i < 20; i++) {
 //            Vector3 pos = {basePos.x, basePos.y+i, basePos.z};
 //            DrawVRCuboid(pos, (Vector4){0.0f,0,0,1}, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0} );
@@ -182,7 +185,7 @@ void DrawGameplayState() {
                 if (lanes[i].notes[j].holdLength && !lanes[i].hasHeldNote) {
                     int newZ = lanes[i].notes[j].position.z - noteGap * lanes[i].notes[j].holdLength / 2;
                     Vector3 newPos = { lanes[i].notes[j].position.y, lanes[i].notes[j].position.z, newZ};
-                    DrawVRCuboid(newPos,o0, (Vector3){noteSize.x, noteSize.y,noteGap * lanes[i].notes[j].holdLength +  noteSize.z}, lanes[i].notes[j].color);
+                    DrawVRCuboid(newPos,o0, (Vector3){noteSize.x, noteSize.y,noteGap * lanes[i].notes[j].holdLength + noteSize.z}, lanes[i].notes[j].color);
                 }
                 else {
                     DrawVRCuboid(lanes[i].notes[j].position,o0, noteSize, lanes[i].notes[j].color);
