@@ -27,6 +27,9 @@ Authors   :
 
 #include <raylib.h>
 #include <stdlib.h>
+#include <android/asset_manager.h>
+#include <android/log.h>
+
 
 /**
  * This is the main entry point of a native application that is using
@@ -38,6 +41,11 @@ void InitGameplayState(void);
 void UpdateGameplayState(void);
 void DrawGameplayState(void);
 void UnloadGameplayState(void);
+bool checkCollisions(int controller);
+
+Sound collisionSound;
+bool wasColliding[2] = {false, false};  // Track previous collision state for each controller
+AAssetManager* assetManager;
 
 int fps = 60;
 typedef struct Note {
@@ -77,6 +85,25 @@ float speed = 0.1f;
 Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
 void android_main(struct android_app* app) {
     InitApp(app);
+    InitAudioDevice();
+    assetManager = app->activity->assetManager;
+
+    AAsset* asset = AAssetManager_open(assetManager, "sound.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        collisionSound = LoadSoundFromWave(wave);
+        if (IsSoundReady(collisionSound)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded sound.wav");
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load sound.wav");
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open sound.wav");
+    }
     InitGameplayState();
     while(!AppShouldClose(app)){
         BeginVRMode();
@@ -84,6 +111,8 @@ void android_main(struct android_app* app) {
         DrawGameplayState();
         EndVRMode();
     }
+    UnloadSound(collisionSound);
+    CloseAudioDevice();
     CloseApp(app);
 }
 
@@ -157,6 +186,16 @@ void UpdateGameplayState() {
             }
         }
     }
+    for (int controller = 0; controller < 2; controller++) {
+        bool isColliding = checkCollisions(controller);
+        if (isColliding && !wasColliding[controller]) {
+            if (IsSoundReady(collisionSound)) {
+                PlaySound(collisionSound);
+            }
+            setVRControllerVibration(controller, 3000, 0.5, -1);
+        }
+        wasColliding[controller] = isColliding;
+    }
 }
 
 void DrawGameplayState() {
@@ -212,4 +251,54 @@ void UnloadGameplayState(void)
         free(lanes[i].notes);
     }
     free(lanes);
+    UnloadSound(collisionSound);
+}
+
+bool checkCollisions(int controller) {
+    Vector3 controllerPos = GetControllerPosition(controller);
+    for (int i = 0; i < numLanes; i++) {
+        for (int j = lanes[i].nextNote; j < lanes[i].numNotes; j++) {
+            Note note = lanes[i].notes[j];
+            Vector3 center;
+            Vector3 halfSize;
+            if (note.holdLength > 0) {
+                float offset = noteGap * note.holdLength / 2;
+                center = (Vector3){note.position.x, note.position.y, note.position.z - offset};
+                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, (noteGap * note.holdLength + noteSize.z) / 2};
+            } else {
+                center = note.position;
+                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, noteSize.z / 2};
+            }
+            if (controllerPos.x >= center.x - halfSize.x &&
+                controllerPos.x <= center.x + halfSize.x &&
+                controllerPos.y >= center.y - halfSize.y &&
+                controllerPos.y <= center.y + halfSize.y &&
+                controllerPos.z >= center.z - halfSize.z &&
+                controllerPos.z <= center.z + halfSize.z) {
+                return true;
+            }
+        }
+        if (lanes[i].hasHeldNote) {
+            Note heldNote = lanes[i].heldNote;
+            Vector3 center;
+            Vector3 halfSize;
+            if (heldNote.holdLength > 0) {
+                float offset = noteGap * heldNote.holdLength / 2;
+                center = (Vector3){heldNote.position.x, heldNote.position.y, heldNote.position.z - offset};
+                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, (noteGap * heldNote.holdLength + noteSize.z) / 2};
+            } else {
+                center = heldNote.position;
+                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, noteSize.z / 2};
+            }
+            if (controllerPos.x >= center.x - halfSize.x &&
+                controllerPos.x <= center.x + halfSize.x &&
+                controllerPos.y >= center.y - halfSize.y &&
+                controllerPos.y <= center.y + halfSize.y &&
+                controllerPos.z >= center.z - halfSize.z &&
+                controllerPos.z <= center.z + halfSize.z) {
+                return true;
+            }
+        }
+    }
+    return false;
 }
