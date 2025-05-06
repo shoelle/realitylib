@@ -48,13 +48,12 @@ void android_main(struct android_app* app) {
         if (IsVRButtonPressed(3)) {
             setVRControllerVibration(1, 3000, 0.5, -1);
         }
-        DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
+        //DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
 //        for(int i = 0; i < 20; i++){
 //            DrawVRCuboid((Vector3){i * 0.2f, 0.0f, -1.0f}, (Vector3){0.1f, 0.1f, 0.1f}, (Vector3){1.0f ,.05f*i, .02f * i});
 //        }
-        if (IsVRButtonDown(1)) {
-            //DrawVRQuad((Vector3){0.0f - selfLoc.x, 1.0f - selfLoc.y, 0.0f - selfLoc.z}, (Vector3){-2.0f * (1.0f - 0), 2.0f * (1.0f - 0), -2.0f}, 1.0f, 1.0f);
-        }
+
+            DrawVRQuad((Vector3){1.0f, 2.0f, 0.0f}, (Vector3){2.0f, 1.0f, -2.0f}, 1.0f, 1.0f);
         struct Vector2 rJoystickVec = GetThumbstickAxisMovement(1);
         selfLoc = (Vector3) {selfLoc.x + rJoystickVec.x * speed, selfLoc.y, selfLoc.z - rJoystickVec.y * speed};
         Vector3 v = GetVRPosition(1);

@@ -4158,9 +4158,110 @@ void DrawVRCylinder(Vector3 position, Vector3 axis, float radius, float aspectRa
     appState.Layers[appState.LayerCount++].Cylinder = cylinder;
 }
 
+Image ImageRenderTextFromFont(Font font, const char* text, int fontSize, Color tint) {
+    int length = strlen(text);
+    int spacing = 0;
+
+    // Estimate image size — you could also measure exactly if needed
+    int width = 0;
+    int height = fontSize;
+
+    for (int i = 0; i < length; i++) {
+        int codepoint = (unsigned char)text[i];
+        int index = -1;
+        for (int j = 0; j < font.glyphCount; j++) {
+            if (font.glyphs[j].value == codepoint) {
+                index = j;
+                break;
+            }
+        }
+
+        if (index == -1) continue;  // Skip missing glyph
+
+        width += font.glyphs[index].advanceX + spacing;
+    }
+
+    // Step 1: Create an empty image
+    Image result = GenImageColor(width, height, BLANK);
+
+    // Step 2: Load the font texture as an image so we can read glyphs
+    Image fontAtlas = LoadImageFromTexture(font.texture);
+
+    int xOffset = 0;
+
+    for (int i = 0; i < length; i++) {
+        int codepoint = (unsigned char)text[i];
+
+        // Find the glyph in the font
+        int glyphIndex = -1;
+        for (int j = 0; j < font.glyphCount; j++) {
+            if (font.glyphs[j].value == codepoint) {
+                glyphIndex = j;
+                break;
+            }
+        }
+        if (glyphIndex == -1) continue; // missing glyph
+
+        GlyphInfo g = font.glyphs[glyphIndex];
+        Rectangle rec = font.recs[glyphIndex];
+
+        // Extract the glyph image from the atlas
+        Image glyphImage = ImageFromImage(fontAtlas, rec);
+
+        // Resize glyph if fontSize differs from baseSize
+        if (fontSize != font.baseSize) {
+            float scale = (float)fontSize / font.baseSize;
+            ImageResize(&glyphImage, (int)(rec.width * scale), (int)(rec.height * scale));
+        }
+
+        // Draw (blit) the glyph image onto the result image
+        ImageDraw(&result, glyphImage,
+                  (Rectangle){0, 0, glyphImage.width, glyphImage.height},
+                  (Rectangle){
+                          xOffset + (fontSize != font.baseSize ? (int)(g.offsetX * (float)fontSize / font.baseSize) : g.offsetX),
+                          (fontSize != font.baseSize ? (int)(g.offsetY * (float)fontSize / font.baseSize) : g.offsetY),
+                          glyphImage.width, glyphImage.height},
+                  tint);
+
+        xOffset += (fontSize != font.baseSize ? (int)(g.advanceX * (float)fontSize / font.baseSize) : g.advanceX);
+        UnloadImage(glyphImage);
+    }
+
+    UnloadImage(fontAtlas);
+    return result;
+}
+
+
 //helper for DrawVRQuad
 XrCompositionLayerQuad
 CreateQuadLayer(XrEyeVisibility eye, Vector3 position, Vector3 axis, float width, float height) {
+    int texWidth = appState.Scene.QuadSwapChain.Width;
+    int texHeight = appState.Scene.QuadSwapChain.Height;
+    char* text = "hello";
+    Font font = GetFontDefault();
+
+    Image textImg = ImageRenderTextFromFont(font, text, 2, (Color){1.0, 0, 0});
+
+    // Step 4: Acquire and update the swapchain image
+    uint32_t imageIndex;
+    xrAcquireSwapchainImage(appState.Scene.QuadSwapChain.Handle, &(XrSwapchainImageAcquireInfo){ XR_TYPE_SWAPCHAIN_IMAGE_ACQUIRE_INFO }, &imageIndex);
+    xrWaitSwapchainImage(appState.Scene.QuadSwapChain.Handle, &(XrSwapchainImageWaitInfo){ XR_TYPE_SWAPCHAIN_IMAGE_WAIT_INFO, .timeout = XR_INFINITE_DURATION });
+
+    // Get swapchain OpenGL images
+    XrSwapchainImageOpenGLESKHR glImages[1] = { { .type = XR_TYPE_SWAPCHAIN_IMAGE_OPENGL_ES_KHR } };
+    uint32_t count;
+    int result = xrEnumerateSwapchainImages(appState.Scene.QuadSwapChain.Handle, 1, &count, (XrSwapchainImageBaseHeader*)glImages);
+
+    GLuint textureID = glImages[0].image;
+
+    // Upload the image to the OpenGL texture
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texWidth, texHeight, GL_RGBA, GL_UNSIGNED_BYTE, textImg.data);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    xrReleaseSwapchainImage(appState.Scene.QuadSwapChain.Handle, &(XrSwapchainImageReleaseInfo){ XR_TYPE_SWAPCHAIN_IMAGE_RELEASE_INFO });
+
+
     XrCompositionLayerQuad quad = {XR_TYPE_COMPOSITION_LAYER_QUAD};
 //    quad.layerFlags = XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT;
     quad.space = appState.CurrentSpace;
