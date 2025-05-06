@@ -37,7 +37,7 @@ Authors   :
  * event loop for receiving input events and doing other things.
  */
 
-void InitGameplayState(void);
+void InitGameplayState();
 void UpdateGameplayState(void);
 void DrawGameplayState(void);
 void UnloadGameplayState(void);
@@ -52,7 +52,15 @@ typedef struct Note {
     Vector3 position;
     Color color;
     int holdLength;
+    bool hit;
 } Note;
+
+typedef struct Sword {
+    Vector3 position;
+    Vector4 orientation;
+    Vector3 size;
+    Color color;
+} Sword;
 
 typedef struct Lane {
     Note* notes;
@@ -65,60 +73,61 @@ typedef struct Lane {
 static int framesCounter = 0;
 static int finishScreen = 0;
 
-static const int noteWidth = 50;
-static const int noteHeight = 20;
-
 static Vector3 noteSize = { .1f, .1f, .1f };
 
+static Sword swords[2];
 static Lane* lanes;
-static const int numNotes = 50;
-static const double noteSpeed = .1f;
-static const int chanceHold = 0; // 10;
-static const int chanceHalf = 0; // 5;
+static const int numNotes = 7500;
+static const double noteSpeed = 0.15f;
 static const int bpm = 138;
-static const int numLanes = 4;
+static const int numLanes = 5;
 
 double noteGap;
 static bool pause = true;
 
-float speed = 0.1f;
-Vector3 selfLoc = (Vector3) {0.0f, 0.0f, 0.0f};
-void android_main(struct android_app* app) {
-    InitApp(app);
-    InitAudioDevice();
-    assetManager = app->activity->assetManager;
-
-    AAsset* asset = AAssetManager_open(assetManager, "sound.wav", AASSET_MODE_BUFFER);
-    if (asset != NULL) {
-        const void* buffer = AAsset_getBuffer(asset);
-        int dataSize = AAsset_getLength(asset);
+Sound loadSound(char* filename) {
+    Sound out;
+    AAsset* collisionAsset = AAssetManager_open(assetManager, filename, AASSET_MODE_BUFFER);
+    if (collisionAsset != NULL) {
+        const void* buffer = AAsset_getBuffer(collisionAsset);
+        int dataSize = AAsset_getLength(collisionAsset);
         Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
-        collisionSound = LoadSoundFromWave(wave);
+        out = LoadSoundFromWave(wave);
         if (IsSoundReady(collisionSound)) {
             __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded sound.wav");
         } else {
             __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load sound.wav");
         }
         UnloadWave(wave);
-        AAsset_close(asset);
+        AAsset_close(collisionAsset);
     } else {
         __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open sound.wav");
     }
-    InitGameplayState();
+    return out;
+}
+
+void android_main(struct android_app* app) {
+    InitApp(app);
+
+    InitGameplayState(app);
+
+    assetManager = app->activity->assetManager;
+    InitAudioDevice();
+    collisionSound = loadSound("sound2.wav");
+
     while(!AppShouldClose(app)){
         BeginVRMode();
         UpdateGameplayState();
         DrawGameplayState();
         EndVRMode();
     }
-    UnloadSound(collisionSound);
-    CloseAudioDevice();
+    UnloadGameplayState();
     CloseApp(app);
 }
 
 Note note;
 // Gameplay Screen Initialization logic
-void InitGameplayState(void)
+void InitGameplayState()
 {
 //    // TODO: Initialize GAMEPLAY screen variables here!
     framesCounter = 0;
@@ -139,20 +148,15 @@ void InitGameplayState(void)
 
     for (int i = 0; i < numNotes; i++) {
         int lane = rand() % numLanes;
-        float height = 0.75f + (rand() % 1) / 2.0f;
-        if (rand() % chanceHold == 0) {
-            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, BLUE, 1};
-        }
-        else {
-            lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, RED, 0};
-            lanes[lane].numNotes++;
-            if (rand() % chanceHalf == 0) {
-                lane = rand() % numLanes;
-                lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * (i + .5f) + 5.0f)}, RED, 0};
-            }
-        }
+        float height = 0.5f + (rand() % 100) / 250.0f;
+        lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, RED, 0, false};
         lanes[lane].numNotes++;
-        // laneD[i] = (Note) {0, (int) (noteGap * (i + 5)), RED};
+    }
+
+    for (int i = 0; i < 2; i++) {
+        swords[i].size = (Vector3){0.05f, 0.05f, 0.05f};
+        swords[i].color = (Color){127,255,255,0};
+        swords[i].orientation = (Vector4){0.0f,0.0f,0.0f,1.0f};
     }
 }
 
@@ -181,9 +185,6 @@ void UpdateGameplayState() {
             for (int j = lanes[i].nextNote; j < lanes[i].numNotes; j++) {
                 lanes[i].notes[j].position.z += noteSpeed;
             }
-            if (lanes[i].hasHeldNote) {
-                lanes[i].heldNote.position.z += noteSpeed;
-            }
         }
     }
     for (int controller = 0; controller < 2; controller++) {
@@ -196,49 +197,30 @@ void UpdateGameplayState() {
         }
         wasColliding[controller] = isColliding;
     }
+
+    for(int i = 0; i < 2; i++) {
+        swords[i].position = GetControllerPosition(i);
+        swords[i].position.z -= 0.2;
+        swords[i].orientation = GetControllerOrientation(i);
+    }
 }
 
 void DrawGameplayState() {
-//    DrawVRBackground(selfLoc.x, selfLoc.z); // this draws the 2d wallpaper stretched across a curved rectangle encompassing roughly 120 degrees
-//    DrawVRCube((Vector3){1.0f, 2.0f, 3.0f}, 1.0f, (Color){19 ,37, 207, 255});
-//    DrawVRCube(note.position,noteSize.x,note.color);
     Vector4 o0 = {0.0f,0.0f,0.0f,1.0f};
     for (int eye = 0; eye < 2; eye++) {
         BeginVRDraw(eye);
 
-        Vector3 lPos = GetControllerPosition(0);
-        lPos.z -= 0.2;
-        Vector4 lOrientation = GetControllerOrientation(0);
-        DrawVRCuboid(lPos, lOrientation, (Vector3){0.02f,0.02f,0.4f}, (Color){127,255,255,0});
-        Vector3 rPos = GetControllerPosition(1);
-        Vector4 rOrientation = GetControllerOrientation(1);
-        rPos.z -= 0.2;
-        DrawVRCuboid(rPos, rOrientation, (Vector3){0.02f,0.02f,0.4f}, (Color){127,255,255,0});
-//        for (int i = 0; i < 20; i++) {
-//            Vector3 pos = {basePos.x, basePos.y+i, basePos.z};
-//            DrawVRCuboid(pos, (Vector4){0.0f,0,0,1}, (Vector3){0.03f,0.03f,0.03f}, (Color){127,255,255,0} );
-//        }
+        for (int i = 0; i < 2; i++) {
+            DrawVRCuboid(swords[i].position, swords[i].orientation, swords[i].size, swords[i].color);
+        }
 
         for (int i = 0; i < numLanes; i++) {
             for (int j = lanes[i].nextNote; j < lanes[i].numNotes; j++) {
-                if (lanes[i].notes[j].holdLength && !lanes[i].hasHeldNote) {
-                    int newZ = lanes[i].notes[j].position.z - noteGap * lanes[i].notes[j].holdLength / 2;
-                    Vector3 newPos = { lanes[i].notes[j].position.y, lanes[i].notes[j].position.z, newZ};
-                    DrawVRCuboid(newPos,o0, (Vector3){noteSize.x, noteSize.y,noteGap * lanes[i].notes[j].holdLength + noteSize.z}, lanes[i].notes[j].color);
+                if(!lanes[i].notes[j].hit) {
+                    DrawVRCuboid(lanes[i].notes[j].position, o0, noteSize, lanes[i].notes[j].color);
                 }
-                else {
-                    DrawVRCuboid(lanes[i].notes[j].position,o0, noteSize, lanes[i].notes[j].color);
-                }
-            }
-            if (lanes[i].hasHeldNote) {
-                int newZ = lanes[i].heldNote.position.z - noteGap * lanes[i].heldNote.holdLength / 2;
-                Vector3 newPos = {lanes[i].heldNote.position.x, lanes[i].heldNote.position.y, newZ};
-                DrawVRCuboid(newPos, o0, (Vector3){noteSize.x, noteSize.y, noteGap * lanes[i].heldNote.holdLength + noteSize.z}, lanes[i].heldNote.color);
             }
         }
-
-        // DrawGrid(40, 1.0f);
-//        for (int i = 0; i < 4; i++) DrawVRCuboid((Vector3){0.0f+i, 0.0f, 0.0f},o0,(Vector3){0.05f,0.05f,20.0f}, GRAY);
 
         EndVRDraw(eye);
     }
@@ -252,50 +234,20 @@ void UnloadGameplayState(void)
     }
     free(lanes);
     UnloadSound(collisionSound);
+    CloseAudioDevice();
 }
 
 bool checkCollisions(int controller) {
-    Vector3 controllerPos = GetControllerPosition(controller);
     for (int i = 0; i < numLanes; i++) {
         for (int j = lanes[i].nextNote; j < lanes[i].numNotes; j++) {
-            Note note = lanes[i].notes[j];
-            Vector3 center;
-            Vector3 halfSize;
-            if (note.holdLength > 0) {
-                float offset = noteGap * note.holdLength / 2;
-                center = (Vector3){note.position.x, note.position.y, note.position.z - offset};
-                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, (noteGap * note.holdLength + noteSize.z) / 2};
-            } else {
-                center = note.position;
-                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, noteSize.z / 2};
-            }
-            if (controllerPos.x >= center.x - halfSize.x &&
-                controllerPos.x <= center.x + halfSize.x &&
-                controllerPos.y >= center.y - halfSize.y &&
-                controllerPos.y <= center.y + halfSize.y &&
-                controllerPos.z >= center.z - halfSize.z &&
-                controllerPos.z <= center.z + halfSize.z) {
-                return true;
-            }
-        }
-        if (lanes[i].hasHeldNote) {
-            Note heldNote = lanes[i].heldNote;
-            Vector3 center;
-            Vector3 halfSize;
-            if (heldNote.holdLength > 0) {
-                float offset = noteGap * heldNote.holdLength / 2;
-                center = (Vector3){heldNote.position.x, heldNote.position.y, heldNote.position.z - offset};
-                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, (noteGap * heldNote.holdLength + noteSize.z) / 2};
-            } else {
-                center = heldNote.position;
-                halfSize = (Vector3){noteSize.x / 2, noteSize.y / 2, noteSize.z / 2};
-            }
-            if (controllerPos.x >= center.x - halfSize.x &&
-                controllerPos.x <= center.x + halfSize.x &&
-                controllerPos.y >= center.y - halfSize.y &&
-                controllerPos.y <= center.y + halfSize.y &&
-                controllerPos.z >= center.z - halfSize.z &&
-                controllerPos.z <= center.z + halfSize.z) {
+            Vector3 center = lanes[i].notes[j].position;
+            if (swords[controller].position.z - center.z <= noteSize.z + swords[controller].size.z + 0.05f &&
+                center.z - swords[controller].position.z <= noteSize.z + swords[controller].size.z + 0.05f &&
+                swords[controller].position.y - center.y <= noteSize.y + swords[controller].size.y + 0.001f &&
+                center.y - swords[controller].position.y <= noteSize.y + swords[controller].size.y + 0.001f &&
+                swords[controller].position.x - center.x <= noteSize.x + swords[controller].size.x + 0.001f &&
+                center.x - swords[controller].position.x <= noteSize.x + swords[controller].size.x + 0.001f) {
+                lanes[i].notes[j].hit = true;
                 return true;
             }
         }
