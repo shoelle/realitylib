@@ -37,13 +37,14 @@ Authors   :
  * event loop for receiving input events and doing other things.
  */
 
-void InitGameplayState();
+void InitGameplayState(void);
 void UpdateGameplayState(void);
 void DrawGameplayState(void);
 void UnloadGameplayState(void);
 bool checkCollisions(int controller);
 
 Sound collisionSound;
+Sound background;
 bool wasColliding[2] = {false, false};  // Track previous collision state for each controller
 AAssetManager* assetManager;
 
@@ -85,36 +86,10 @@ static const int numLanes = 5;
 double noteGap;
 static bool pause = true;
 
-Sound loadSound(char* filename) {
-    Sound out;
-    AAsset* collisionAsset = AAssetManager_open(assetManager, filename, AASSET_MODE_BUFFER);
-    if (collisionAsset != NULL) {
-        const void* buffer = AAsset_getBuffer(collisionAsset);
-        int dataSize = AAsset_getLength(collisionAsset);
-        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
-        out = LoadSoundFromWave(wave);
-        if (IsSoundReady(collisionSound)) {
-            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded sound.wav");
-        } else {
-            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load sound.wav");
-        }
-        UnloadWave(wave);
-        AAsset_close(collisionAsset);
-    } else {
-        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open sound.wav");
-    }
-    return out;
-}
-
 void android_main(struct android_app* app) {
     InitApp(app);
-
-    InitGameplayState(app);
-
     assetManager = app->activity->assetManager;
-    InitAudioDevice();
-    collisionSound = loadSound("sound2.wav");
-
+    InitGameplayState();
     while(!AppShouldClose(app)){
         BeginVRMode();
         UpdateGameplayState();
@@ -146,10 +121,12 @@ void InitGameplayState()
         lanes[i].hasHeldNote = false;
     }
 
+    float centerLane = numLanes / 2.0f;
     for (int i = 0; i < numNotes; i++) {
         int lane = rand() % numLanes;
+        float locX = (lane-centerLane)*0.3;
         float height = 0.5f + (rand() % 100) / 250.0f;
-        lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { lane*0.3-0.86,height,-(noteGap * i + 5.0f)}, RED, 0, false};
+        lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { locX,height,-(noteGap * (i+5))}, RED, 0, false};
         lanes[lane].numNotes++;
     }
 
@@ -157,6 +134,13 @@ void InitGameplayState()
         swords[i].size = (Vector3){0.05f, 0.05f, 0.05f};
         swords[i].color = (Color){127,255,255,0};
         swords[i].orientation = (Vector4){0.0f,0.0f,0.0f,1.0f};
+    }
+
+    InitAudioDevice();
+    collisionSound = LoadVRSound(assetManager, "sound2.wav");
+    background = LoadVRSound(assetManager, "foolmoon.mp3");
+    if (IsSoundReady(background)) {
+        PlaySound(background);
     }
 }
 
@@ -200,7 +184,7 @@ void UpdateGameplayState() {
 
     for(int i = 0; i < 2; i++) {
         swords[i].position = GetControllerPosition(i);
-        swords[i].position.z -= 0.2;
+        swords[i].position.z -= 0.0;
         swords[i].orientation = GetControllerOrientation(i);
     }
 }
@@ -234,6 +218,7 @@ void UnloadGameplayState(void)
     }
     free(lanes);
     UnloadSound(collisionSound);
+    UnloadSound(background);
     CloseAudioDevice();
 }
 

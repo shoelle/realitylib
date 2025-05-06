@@ -1620,6 +1620,7 @@ RLAPI Wave LoadWave(const char *fileName);                            // Load wa
 RLAPI Wave LoadWaveFromMemory(const char *fileType, const unsigned char *fileData, int dataSize); // Load wave from memory buffer, fileType refers to extension: i.e. '.wav'
 RLAPI bool IsWaveReady(Wave wave);                                    // Checks if wave data is ready
 RLAPI Sound LoadSound(const char *fileName);                          // Load sound from file
+RLAPI Sound LoadVRSound(AAssetManager* assetManager, const char *fileName); // Load sound from file for VR
 RLAPI Sound LoadSoundFromWave(Wave wave);                             // Load sound from wave data
 RLAPI Sound LoadSoundAlias(Sound source);                             // Create a new sound that shares the same sample data as the source sound, does not own the sound data
 RLAPI bool IsSoundReady(Sound sound);                                 // Checks if a sound is ready

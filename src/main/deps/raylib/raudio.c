@@ -884,6 +884,27 @@ Sound LoadSound(const char *fileName)
     return sound;
 }
 
+Sound LoadVRSound(AAssetManager* assetManager, const char* fileName) {
+    Sound sound;
+    AAsset* asset = AAssetManager_open(assetManager, fileName, AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        sound = LoadSoundFromWave(wave);
+        if (IsSoundReady(sound)) {
+            TRACELOG(LOG_INFO, "VRApp", "Successfully loaded %s", fileName);
+        } else {
+            TRACELOG(LOG_INFO, "VRApp", "Failed to load %s", fileName);
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    } else {
+        TRACELOG(LOG_INFO, "VRApp", "Failed to open %s", fileName);
+    }
+    return sound;
+}
+
 // Load sound from wave data
 // NOTE: Wave data must be unallocated manually
 Sound LoadSoundFromWave(Wave wave)
