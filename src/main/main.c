@@ -18,8 +18,8 @@
  */
 /************************************************************************************
 
-Filename  : XrCompositor_NativeActivity.c
-Content   : This sample uses the Android NativeActivity class.
+Filename  : main.c
+Content   : Demo main
 Created   :
 Authors   :
 
@@ -44,7 +44,7 @@ void UnloadGameplayState(void);
 bool checkCollisions(int controller);
 
 Sound collisionSound;
-Sound background;
+Sound backgroundSound;
 bool wasColliding[2] = {false, false};  // Track previous collision state for each controller
 AAssetManager* assetManager;
 
@@ -89,8 +89,29 @@ static bool pause = true;
 void android_main(struct android_app* app) {
     InitApp(app);
     assetManager = app->activity->assetManager;
+    InitAudioDevice();
+
+    AAsset* asset = AAssetManager_open(assetManager, "backgroundAudio.wav", AASSET_MODE_BUFFER);
+    if (asset != NULL) {
+        const void* buffer = AAsset_getBuffer(asset);
+        int dataSize = AAsset_getLength(asset);
+        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
+        backgroundSound = LoadSoundFromWave(wave);
+        if (IsSoundReady(backgroundSound)) {
+            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded backgroundAudio.wav");
+        } else {
+            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load backgroundAudio.wav");
+        }
+        UnloadWave(wave);
+        AAsset_close(asset);
+    } else {
+        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open backgroundAudio.wav");
+    }
     InitGameplayState();
     while(!AppShouldClose(app)){
+        if (IsSoundReady(backgroundSound) && !IsSoundPlaying(backgroundSound)) {
+            PlaySound(backgroundSound);
+        }
         BeginVRMode();
         UpdateGameplayState();
         DrawGameplayState();
@@ -136,12 +157,7 @@ void InitGameplayState()
         swords[i].orientation = (Vector4){0.0f,0.0f,0.0f,1.0f};
     }
 
-    InitAudioDevice();
     collisionSound = LoadVRSound(assetManager, "sound2.wav");
-    background = LoadVRSound(assetManager, "foolmoon.mp3");
-    if (IsSoundReady(background)) {
-        PlaySound(background);
-    }
 }
 
 void UpdateGameplayState() {
@@ -218,7 +234,7 @@ void UnloadGameplayState(void)
     }
     free(lanes);
     UnloadSound(collisionSound);
-    UnloadSound(background);
+    UnloadSound(backgroundSound);
     CloseAudioDevice();
 }
 
