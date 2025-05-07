@@ -90,23 +90,6 @@ void android_main(struct android_app* app) {
     InitApp(app);
     assetManager = app->activity->assetManager;
     InitAudioDevice();
-
-    AAsset* asset = AAssetManager_open(assetManager, "backgroundAudio.wav", AASSET_MODE_BUFFER);
-    if (asset != NULL) {
-        const void* buffer = AAsset_getBuffer(asset);
-        int dataSize = AAsset_getLength(asset);
-        Wave wave = LoadWaveFromMemory(".wav", (const unsigned char*)buffer, dataSize);
-        backgroundSound = LoadSoundFromWave(wave);
-        if (IsSoundReady(backgroundSound)) {
-            __android_log_print(ANDROID_LOG_INFO, "VRApp", "Successfully loaded backgroundAudio.wav");
-        } else {
-            __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to load backgroundAudio.wav");
-        }
-        UnloadWave(wave);
-        AAsset_close(asset);
-    } else {
-        __android_log_print(ANDROID_LOG_ERROR, "VRApp", "Failed to open backgroundAudio.wav");
-    }
     InitGameplayState();
     while(!AppShouldClose(app)){
         if (IsSoundReady(backgroundSound) && !IsSoundPlaying(backgroundSound)) {
@@ -116,8 +99,13 @@ void android_main(struct android_app* app) {
         UpdateGameplayState();
         DrawGameplayState();
         EndVRMode();
+        if (IsVRButtonPressed(3)) {
+            UnloadGameplayState();
+            InitGameplayState();
+        }
     }
     UnloadGameplayState();
+    CloseAudioDevice();
     CloseApp(app);
 }
 
@@ -158,6 +146,10 @@ void InitGameplayState()
     }
 
     collisionSound = LoadVRSound(assetManager, "sound2.wav");
+    backgroundSound = LoadVRSound(assetManager, "backgroundAudio.wav");
+    if (IsSoundReady(backgroundSound)) {
+        PlaySound(backgroundSound);
+    }
 }
 
 void UpdateGameplayState() {
@@ -235,7 +227,6 @@ void UnloadGameplayState(void)
     free(lanes);
     UnloadSound(collisionSound);
     UnloadSound(backgroundSound);
-    CloseAudioDevice();
 }
 
 bool checkCollisions(int controller) {
