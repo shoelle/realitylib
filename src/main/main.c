@@ -80,7 +80,7 @@ static Sword swords[2];
 static Lane* lanes;
 static const int numNotes = 7500;
 static const double noteSpeed = 0.15f;
-static const int bpm = 138;
+static const int bpm = 178;
 static const int numLanes = 5;
 
 double noteGap;
@@ -155,15 +155,15 @@ void InitGameplayState()
 void UpdateGameplayState() {
     SyncControllers();
 
-    if (IsVRButtonPressed(1)) {
-        setVRControllerVibration(1, 3000, 0.5, -1);
-    }
-    if (IsVRButtonPressed(2)) {
-        setVRControllerVibration(1, 3000, 0.5, -1);
-    }
-    if (IsVRButtonPressed(3)) {
-        setVRControllerVibration(1, 3000, 0.5, -1);
-    }
+//    if (IsVRButtonPressed(1)) {
+//        setVRControllerVibration(1, 3000, 0.5, -1);
+//    }
+//    if (IsVRButtonPressed(2)) {
+//        setVRControllerVibration(1, 3000, 0.5, -1);
+//    }
+//    if (IsVRButtonPressed(3)) {
+//        setVRControllerVibration(1, 3000, 0.5, -1);
+//    }
 
     for (int i = 0; i < numLanes; i++) {
         while (lanes[i].notes[lanes[i].nextNote].position.z > 10.0f) {
