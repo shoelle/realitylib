@@ -79,7 +79,7 @@ static Vector3 noteSize = { .1f, .1f, .1f };
 static Sword swords[2];
 static Lane* lanes;
 static const int numNotes = 7500;
-static const double noteSpeed = 0.15f;
+static const double noteSpeed = 0.1f;
 static const int bpm = 178;
 static const int numLanes = 5;
 
@@ -133,8 +133,8 @@ void InitGameplayState()
     float centerLane = numLanes / 2.0f;
     for (int i = 0; i < numNotes; i++) {
         int lane = rand() % numLanes;
-        float locX = (lane-centerLane)*0.3;
-        float height = 0.5f + (rand() % 100) / 250.0f;
+        float locX = (lane-centerLane)*0.28;
+        float height = 1.0f + (rand() % 1001) / 1500.0f; // 1.5 - 1.9
         lanes[lane].notes[lanes[lane].numNotes] = (Note){ (Vector3) { locX,height,-(noteGap * (i+5))}, RED, 0, false};
         lanes[lane].numNotes++;
     }
@@ -208,7 +208,7 @@ void DrawGameplayState() {
 
         for (int i = 0; i < numLanes; i++) {
             for (int j = lanes[i].nextNote; j < lanes[i].numNotes; j++) {
-                if(!lanes[i].notes[j].hit) {
+                if(!lanes[i].notes[j].hit && lanes[i].notes[j].position.z >= -40.0f) {
                     DrawVRCuboid(lanes[i].notes[j].position, o0, noteSize, lanes[i].notes[j].color);
                 }
             }
